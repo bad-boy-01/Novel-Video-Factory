@@ -104,6 +104,15 @@ def main():
                 for concept in concepts:
                     memory_db.add_world_concept(concept.get('concept_type', 'misc'), concept.get('name', 'Unknown'), concept.get('description', ''))
                     logger.info(f"Saved world concept to DB: {concept.get('name')}")
+                    
+                # World Style extraction (only needed once per chapter/file)
+                if chunk_idx == 0:
+                    style_tags = extractor.extract_world_style(chunk_text)
+                    style_file = os.path.join(pm.project_dir, 'memory', 'world_style.txt')
+                    os.makedirs(os.path.dirname(style_file), exist_ok=True)
+                    with open(style_file, 'w', encoding='utf-8') as f:
+                        f.write(style_tags)
+                    logger.info(f"Extracted World Atmosphere Setting: {style_tags}")
 
     if args.stage in ['all', 'character_sheets']:
         logger.info("Running Character Sheets Generation...")

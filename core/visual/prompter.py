@@ -12,6 +12,18 @@ class PromptGenerator:
         self.memory_engine = memory_engine
         self.base_style = base_style
         
+        # Inject Dynamic World Style if it exists
+        import os
+        project_dir = self.memory_engine.project_dir if hasattr(self.memory_engine, 'project_dir') else ""
+        if project_dir:
+            world_style_path = os.path.join(project_dir, 'memory', 'world_style.txt')
+            if os.path.exists(world_style_path):
+                with open(world_style_path, 'r', encoding='utf-8') as f:
+                    world_tags = f.read().strip()
+                if world_tags:
+                    self.base_style = f"{world_tags}, {self.base_style}"
+                    logger.info(f"Loaded Dynamic World Style: {world_tags}")
+        
     def generate_prompt_for_scene(self, scene: Dict) -> Dict:
         """
         Creates a Stable Diffusion/FLUX prompt for a single scene, injecting Character DNA.

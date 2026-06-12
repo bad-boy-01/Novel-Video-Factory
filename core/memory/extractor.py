@@ -76,3 +76,15 @@ class MemoryExtractor:
             return data if isinstance(data, list) else []
         except json.JSONDecodeError:
             return []
+
+    def extract_world_style(self, text_chunk: str) -> str:
+        """
+        Deduces the overall visual atmosphere and setting of the story for image generation.
+        """
+        system_prompt = (
+            "You are an expert storyboard artist. Read the following text and determine the visual setting and atmosphere. "
+            "For example: 'ancient china, historical, wuxia, poor village, rustic', OR 'sci-fi, futuristic, cyberpunk, neon lights', OR 'modern day, urban, city'. "
+            "Return ONLY a comma-separated list of 3-6 Danbooru-style setting tags. Do not write anything else."
+        )
+        response = self.llm.generate(text_chunk, system_prompt=system_prompt, temperature=0.1)
+        return response.strip().strip('"').strip("'")
