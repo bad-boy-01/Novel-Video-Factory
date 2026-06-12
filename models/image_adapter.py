@@ -23,12 +23,11 @@ class LocalImageAdapter:
             import torch
             from diffusers import AutoPipelineForText2Image
             
-            # This is commented out to prevent massive background downloads during tests
-            # self.pipeline = AutoPipelineForText2Image.from_pretrained(
-            #     self.model_id, torch_dtype=torch.float16
+            # self.pipeline = AutoPipelineForText2Image.frompretrained(
+            #     self.model_name, torch_dtype=torch.float16
             # )
             # self.pipeline.enable_model_cpu_offload()
-            logger.info(f"Initialized Diffusers pipeline for {self.model_id} (MOCK MODE ENABLED for testing)")
+            logger.info(f"Initialized Diffusers pipeline for {self.model_name} (MOCK MODE ENABLED for testing)")
         except ImportError:
             logger.warning("Diffusers/Torch not installed properly. Running Image Adapter in MOCK mode.")
             self.pipeline = None
