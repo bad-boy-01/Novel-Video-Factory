@@ -66,7 +66,9 @@ class VideoRenderer:
                             font=config.get('video.font', 'Arial'),
                             fontsize=config.get('video.font_size', 40),
                             color='white',
-                            bg_color='black'
+                            bg_color='black',
+                            method='caption',
+                            size=(img_clip.w - 100, None)
                         ).set_position(('center', 'bottom')).set_duration(duration)
                         
                         # Composite the text over the image

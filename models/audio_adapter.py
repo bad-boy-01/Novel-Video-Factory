@@ -11,8 +11,8 @@ class LocalAudioAdapter:
     def __init__(self):
         from core.config_manager import ConfigManager
         config = ConfigManager()
-        self.model_name = config.get('models.audio.model', "tts_models/en/vctk/vits")
-        self.speaker = config.get('models.audio.voice', "p267")
+        self.model_name = "tts_models/en/ljspeech/vits"
+        self.speaker = None
         self.tts = None
         self._init_tts()
 
@@ -32,7 +32,10 @@ class LocalAudioAdapter:
         """
         if self.tts is not None:
             logger.info("Generating audio (Real)...")
-            self.tts.tts_to_file(text=text, speaker=self.speaker, file_path=output_path)
+            if self.speaker:
+                self.tts.tts_to_file(text=text, speaker=self.speaker, file_path=output_path)
+            else:
+                self.tts.tts_to_file(text=text, file_path=output_path)
             logger.info(f"Saved real generated audio to {output_path}")
         else:
             logger.info(f"Generating mock audio for text: {text[:30]}...")

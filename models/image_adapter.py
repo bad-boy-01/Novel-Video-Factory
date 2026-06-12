@@ -42,6 +42,8 @@ class LocalImageAdapter:
             image = self.pipeline(
                 prompt,
                 negative_prompt=negative_prompt,
+                width=1280,
+                height=720,
                 num_inference_steps=25, # SDXL requires ~25 steps
                 guidance_scale=7.0
             ).images[0]
