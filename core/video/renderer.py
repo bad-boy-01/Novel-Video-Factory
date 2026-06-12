@@ -78,11 +78,13 @@ class VideoRenderer:
                 
                 # Basic fade transition (fadein for half a second)
                 if len(clips) > 0:
-                    from moviepy.video.fx.all import crossfadein
+                    import moviepy.video.fx.all as vfx
                     from core.config_manager import ConfigManager
                     config = ConfigManager()
                     crossfade = config.get('video.crossfade_duration', 0.5)
-                    img_clip = img_clip.crossfadein(crossfade)
+                    
+                    # Apply standard fadein directly via the fx method
+                    img_clip = img_clip.fx(vfx.fadein, crossfade)
                     
                 clips.append(img_clip)
                 logger.info(f"Assembled {scene_id} - Duration: {duration}s")
