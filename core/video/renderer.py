@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from moviepy import ImageClip, AudioFileClip, concatenate_videoclips
+from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class VideoRenderer:
                 
                 try:
                     # Generate Subtitle
-                    from moviepy import TextClip, CompositeVideoClip
+                    from moviepy.editor import TextClip, CompositeVideoClip
                     from core.config_manager import ConfigManager
                     config = ConfigManager()
                     

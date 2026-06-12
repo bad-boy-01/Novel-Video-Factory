@@ -3,7 +3,7 @@ diffusers
 transformers
 accelerate
 torch
-moviepy
+moviepy<2.0.0
 ffmpeg-python
 coqui-tts
 SQLAlchemy
