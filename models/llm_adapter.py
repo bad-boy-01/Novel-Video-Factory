@@ -44,7 +44,7 @@ class LocalLLMAdapter:
             payload["system"] = system_prompt
 
         try:
-            response = requests.post(self.api_url, json=payload, timeout=5)
+            response = requests.post(self.api_url, json=payload, timeout=120)
             response.raise_for_status()
             data = response.json()
             return data.get("response", "")

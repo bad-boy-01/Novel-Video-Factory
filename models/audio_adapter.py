@@ -20,9 +20,8 @@ class LocalAudioAdapter:
         """Attempts to load the TTS model. Falls back to mock on failure."""
         try:
             from TTS.api import TTS
-            # Commented out to prevent large background download during tests
-            # self.tts = TTS(self.model_name, progress_bar=False, gpu=True)
-            logger.info(f"Initialized TTS model {self.model_name} (MOCK MODE ENABLED for testing)")
+            self.tts = TTS(self.model_name, progress_bar=False, gpu=True)
+            logger.info(f"Initialized TTS model {self.model_name}")
         except ImportError:
             logger.warning("Coqui-TTS not installed properly. Running Audio Adapter in MOCK mode.")
             self.tts = None

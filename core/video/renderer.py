@@ -58,9 +58,9 @@ class VideoRenderer:
                     
                     if subtitle_text:
                         txt_clip = TextClip(
-                            text=subtitle_text,
+                            subtitle_text,
                             font=config.get('video.font', 'Arial'),
-                            font_size=config.get('video.font_size', 40),
+                            fontsize=config.get('video.font_size', 40),
                             color='white',
                             bg_color='black'
                         ).set_position(('center', 'bottom')).set_duration(duration)
@@ -74,11 +74,11 @@ class VideoRenderer:
                 
                 # Basic fade transition (fadein for half a second)
                 if len(clips) > 0:
-                    from moviepy.video.fx.CrossFadeIn import CrossFadeIn
+                    from moviepy.video.fx.all import crossfadein
                     from core.config_manager import ConfigManager
                     config = ConfigManager()
                     crossfade = config.get('video.crossfade_duration', 0.5)
-                    img_clip = CrossFadeIn(crossfade).apply(img_clip)
+                    img_clip = img_clip.crossfadein(crossfade)
                     
                 clips.append(img_clip)
                 logger.info(f"Assembled {scene_id} - Duration: {duration}s")
