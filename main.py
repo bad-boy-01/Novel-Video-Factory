@@ -19,7 +19,7 @@ def main():
     parser = argparse.ArgumentParser(description="Novel Video Factory - Automated AI Novel to Video Pipeline")
     parser.add_argument('project', help="Name of the project/novel")
     parser.add_argument('--stage', type=str, default='all', 
-                        choices=['all', 'translate', 'memory', 'visual', 'generation', 'audio', 'video', 'publishing'],
+                        choices=['all', 'translate', 'memory', 'visual', 'generation', 'audio', 'video', 'publishing', 'export'],
                         help='Which stage of the pipeline to run')
     parser.add_argument('--config', default='config/default.yaml', help="Path to configuration file")
 
@@ -199,6 +199,41 @@ def main():
         pub_gen.generate_seo_metadata(full_text[:3000])
         pub_gen.select_thumbnail()
 
+    if args.stage in ['all', 'export']:
+        logger.info("Running Export Engine...")
+        import shutil
+        export_dir = os.path.join(pm.project_dir, 'export')
+        os.makedirs(export_dir, exist_ok=True)
+        
+        # Copy memory db
+        db_path = os.path.join(pm.project_dir, 'memory', 'novel_memory.db')
+        if os.path.exists(db_path):
+            shutil.copy(db_path, os.path.join(export_dir, 'novel_memory.db'))
+            logger.info("Packaged novel_memory.db for persistence.")
+            
+            # Create human readable dump
+            try:
+                memory_db = MemoryEngine(pm.project_dir)
+                with memory_db.Session() as session:
+                    from core.memory.database import Character
+                    chars = session.query(Character).all()
+                    data = [{"name": c.canonical_name, "visual_dna": c.visual_dna} for c in chars]
+                    import json
+                    with open(os.path.join(export_dir, 'characters_dump.json'), 'w', encoding='utf-8') as f:
+                        json.dump(data, f, indent=2)
+                logger.info("Generated human-readable characters_dump.json.")
+            except Exception as e:
+                logger.warning(f"Could not generate character dump: {e}")
+                    
+        # Copy videos
+        output_dir = os.path.join(pm.project_dir, 'output')
+        if os.path.exists(output_dir):
+            for f in os.listdir(output_dir):
+                if f.endswith('.mp4'):
+                    shutil.copy(os.path.join(output_dir, f), os.path.join(export_dir, f))
+                    logger.info(f"Packaged video: {f}")
+                
+        logger.info(f"Exported all final assets to {export_dir}")
 
     logger.info("Pipeline completed successfully.")
 
