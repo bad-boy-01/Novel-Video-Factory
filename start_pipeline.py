@@ -26,7 +26,7 @@ def main():
     print("\n[2/5] Updating System Dependencies...")
     if os.path.exists("/usr/bin/apt-get"):
         try:
-            subprocess.run("apt-get update && apt-get install -y espeak-ng imagemagick", shell=True, check=True)
+            subprocess.run("apt-get update && apt-get install -y espeak-ng imagemagick zstd", shell=True, check=True)
             subprocess.run("curl -fsSL https://ollama.com/install.sh | sh", shell=True, check=True)
             print("System dependencies and Ollama installed.")
         except subprocess.CalledProcessError as e:
