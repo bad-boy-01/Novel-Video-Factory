@@ -6,7 +6,7 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser(description="Novel Video Factory Universal Orchestrator")
-    parser.add_argument("project", help="The name of the project folder (e.g. dummy_novel, chapter_1)")
+    parser.add_argument("project", nargs="?", default="novel", help="The name of the project folder (e.g. dummy_novel, chapter_1)")
     args = parser.parse_args()
     project_name = args.project
     
