@@ -1,4 +1,6 @@
 import os
+os.environ["SDL_AUDIODRIVER"] = "dummy"
+
 import json
 import logging
 from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
