@@ -34,8 +34,14 @@ class LocalImageAdapter:
             except Exception as e:
                 logger.warning(f"Could not load IP-Adapter. Falling back to text-only generation. {e}")
                 
-            self.pipeline.enable_model_cpu_offload()
-            logger.info(f"Initialized Diffusers pipeline for {self.model_name}")
+            try:
+                self.pipeline.enable_xformers_memory_efficient_attention()
+                logger.info("xformers enabled for faster generation.")
+            except Exception:
+                pass
+                
+            self.pipeline.to("cuda")
+            logger.info(f"Initialized Diffusers pipeline for {self.model_name} on CUDA")
         except ImportError:
             logger.warning("Diffusers/Torch not installed properly. Running Image Adapter in MOCK mode.")
             self.pipeline = None
@@ -53,7 +59,7 @@ class LocalImageAdapter:
                 "negative_prompt": negative_prompt,
                 "width": 1280,
                 "height": 720,
-                "num_inference_steps": 25,
+                "num_inference_steps": 20,
                 "guidance_scale": 7.0
             }
             
