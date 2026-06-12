@@ -1,0 +1,92 @@
+import os
+import sys
+import subprocess
+import time
+import argparse
+
+def main():
+    parser = argparse.ArgumentParser(description="Novel Video Factory Universal Orchestrator")
+    parser.add_argument("project", help="The name of the project folder (e.g. dummy_novel, chapter_1)")
+    args = parser.parse_args()
+    project_name = args.project
+    
+    print(f"=== Novel Video Factory Orchestrator ===")
+    print(f"Project Target: {project_name}")
+    print("="*40)
+    
+    # 1. Directory Initialization
+    print("\n[1/5] Initializing Project Structures...")
+    project_input_dir = f"projects/{project_name}/input"
+    project_output_dir = f"projects/{project_name}/output"
+    os.makedirs(project_input_dir, exist_ok=True)
+    os.makedirs(project_output_dir, exist_ok=True)
+    print(f"Verified directories: {project_input_dir}, {project_output_dir}")
+
+    # 2. System Dependency Management (Only runs if running on Linux/Kaggle)
+    print("\n[2/5] Updating System Dependencies...")
+    if os.path.exists("/usr/bin/apt-get"):
+        try:
+            subprocess.run("apt-get update && apt-get install -y espeak-ng imagemagick", shell=True, check=True)
+            print("System dependencies installed.")
+        except subprocess.CalledProcessError as e:
+            print(f"Warning: Failed to install system dependencies (are you root?): {e}")
+    else:
+        print("Skipping apt-get (not on a Debian/Ubuntu system).")
+
+    # 3. Local Server Boot
+    print("\n[3/5] Starting Ollama Backend...")
+    try:
+        # Check if Ollama is already running
+        subprocess.run(["curl", "-s", "-f", "http://localhost:11434/"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        print("Ollama server is already running.")
+    except subprocess.CalledProcessError:
+        print("Booting detached Ollama server...")
+        subprocess.Popen(
+            ["ollama", "serve"], 
+            stdout=subprocess.DEVNULL, 
+            stderr=subprocess.DEVNULL,
+            start_new_session=True
+        )
+        time.sleep(5) # Wait for startup
+        
+    print("Ensuring qwen2.5:7b is pulled...")
+    subprocess.run("ollama pull qwen2.5:7b", shell=True)
+
+    # 4. Storage & Cache Reset
+    print("\n[4/5] Resetting Caches for Clean Generation...")
+    cache_file = f"projects/{project_name}/cache_manifest.json"
+    db_file = "core/memory/characters.db"
+    
+    if os.path.exists(cache_file):
+        os.remove(cache_file)
+        print(f"Cleared cache: {cache_file}")
+    if os.path.exists(db_file):
+        os.remove(db_file)
+        print(f"Cleared memory database: {db_file}")
+
+    # 5. Pipeline Execution
+    print("\n[5/5] Launching Main Pipeline...")
+    print("="*40)
+    process = subprocess.Popen(
+        f"python main.py {project_name} --stage all", 
+        shell=True, 
+        stdout=subprocess.PIPE, 
+        stderr=subprocess.STDOUT, 
+        text=True,
+        bufsize=1
+    )
+
+    # Stream real-time output
+    for line in iter(process.stdout.readline, ''):
+        sys.stdout.write(line)
+        sys.stdout.flush()
+
+    process.wait()
+    print("="*40)
+    if process.returncode == 0:
+        print("\n✅ Processing Loop Successfully Concluded.")
+    else:
+        print(f"\n❌ Pipeline terminated with errors (Exit code {process.returncode}).")
+
+if __name__ == "__main__":
+    main()
