@@ -26,27 +26,49 @@ class LocalImageAdapter:
             self.pipeline = AutoPipelineForText2Image.from_pretrained(
                 self.model_name, torch_dtype=torch.float16
             )
+            # IP Adapter support for SDXL
+            try:
+                self.pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="sdxl_models", weight_name="ip-adapter_sdxl.bin")
+                self.pipeline.set_ip_adapter_scale(0.5)
+                logger.info("IP-Adapter loaded successfully for Character Reference injection.")
+            except Exception as e:
+                logger.warning(f"Could not load IP-Adapter. Falling back to text-only generation. {e}")
+                
             self.pipeline.enable_model_cpu_offload()
             logger.info(f"Initialized Diffusers pipeline for {self.model_name}")
         except ImportError:
             logger.warning("Diffusers/Torch not installed properly. Running Image Adapter in MOCK mode.")
             self.pipeline = None
 
-    def generate_image(self, prompt: str, output_path: str, negative_prompt: str = ""):
+    def generate_image(self, prompt: str, output_path: str, negative_prompt: str = "", reference_image_paths: list = None):
         """
         Generates an image from a prompt and saves it.
         """
         if self.pipeline is not None:
             # Real generation
             logger.info(f"Generating image (Real)...")
-            image = self.pipeline(
-                prompt,
-                negative_prompt=negative_prompt,
-                width=1280,
-                height=720,
-                num_inference_steps=25, # SDXL requires ~25 steps
-                guidance_scale=7.0
-            ).images[0]
+            
+            kwargs = {
+                "prompt": prompt,
+                "negative_prompt": negative_prompt,
+                "width": 1280,
+                "height": 720,
+                "num_inference_steps": 25,
+                "guidance_scale": 7.0
+            }
+            
+            # Inject IP Adapter if reference images are provided
+            if reference_image_paths:
+                try:
+                    from PIL import Image
+                    ref_images = [Image.open(p).convert("RGB") for p in reference_image_paths if os.path.exists(p)]
+                    if ref_images:
+                        kwargs["ip_adapter_image"] = ref_images
+                        logger.info(f"Injecting {len(ref_images)} character reference images via IP-Adapter.")
+                except Exception as e:
+                    logger.warning(f"Failed to load reference images: {e}")
+            
+            image = self.pipeline(**kwargs).images[0]
             image.save(output_path)
             logger.info(f"Saved real generated image to {output_path}")
         else:

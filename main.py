@@ -105,6 +105,36 @@ def main():
                     memory_db.add_world_concept(concept.get('concept_type', 'misc'), concept.get('name', 'Unknown'), concept.get('description', ''))
                     logger.info(f"Saved world concept to DB: {concept.get('name')}")
 
+    if args.stage in ['all', 'character_sheets']:
+        logger.info("Running Character Sheets Generation...")
+        memory_db = MemoryEngine(pm.project_dir)
+        from models.image_adapter import LocalImageAdapter
+        image_adapter = LocalImageAdapter()
+        
+        chars_dir = os.path.join(pm.project_dir, 'memory', 'characters')
+        os.makedirs(chars_dir, exist_ok=True)
+        
+        style_modifier = config_manager.get('prompts.style_modifier', 'Cinematic, high quality')
+        
+        with memory_db.Session() as session:
+            from core.memory.database import Character
+            characters = session.query(Character).all()
+            for char in characters:
+                img_path = os.path.join(chars_dir, f"{char.id}.png")
+                if not os.path.exists(img_path):
+                    logger.info(f"Generating Character Reference Sheet for {char.canonical_name}...")
+                    dna_tags = []
+                    for k, v in char.visual_dna.items():
+                        if isinstance(v, str) and v.lower() not in ['not specified', 'unknown', 'none']:
+                            dna_tags.append(v)
+                    dna_str = ", ".join(dna_tags)
+                    
+                    prompt = f"1boy/1girl, {dna_str}, character reference sheet, white background, simple background, front view, full body, {style_modifier}"
+                    negative = config_manager.get('prompts.negative_prompt', 'ugly, bad anatomy')
+                    image_adapter.generate_image(prompt, img_path, negative_prompt=negative)
+                else:
+                    logger.info(f"Reference Sheet already exists for {char.canonical_name}, skipping.")
+
     if args.stage in ['all', 'visual']:
         logger.info("Running Visual Planning...")
         from core.visual.planner import ScenePlanner
@@ -160,9 +190,10 @@ def main():
                 scene_id = p.get('scene_id')
                 prompt = p.get('prompt')
                 negative_prompt = p.get('negative_prompt', '')
+                ref_images = p.get('reference_images', [])
                 output_path = os.path.join(images_dir, f"{scene_id}.png")
                 
-                image_adapter.generate_image(prompt, output_path, negative_prompt)
+                image_adapter.generate_image(prompt, output_path, negative_prompt, reference_image_paths=ref_images)
         else:
             logger.warning("No prompts.json found. Run the visual stage first.")
             

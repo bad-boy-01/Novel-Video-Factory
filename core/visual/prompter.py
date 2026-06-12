@@ -19,16 +19,26 @@ class PromptGenerator:
         characters_present = scene.get("characters_present", [])
         dna_descriptions = []
         
+        import os
+        project_dir = self.memory_engine.project_dir if hasattr(self.memory_engine, 'project_dir') else ""
+        ref_images = []
+        
         for char_name in characters_present:
             char_data = self.memory_engine.get_character_by_name(char_name)
             if char_data:
                 dna = char_data.get("visual_dna", {})
                 # Format DNA into a string
-                dna_str = ", ".join([f"{k} {v}" if not isinstance(v, dict) else "" for k, v in dna.items()]).strip()
+                dna_str = ", ".join([f"{v}" if not isinstance(v, dict) else "" for k, v in dna.items()]).strip()
                 if dna_str:
                     dna_descriptions.append(f"({char_name}: {dna_str})")
                 else:
                     dna_descriptions.append(char_name)
+                    
+                # Look for reference image
+                if project_dir and len(characters_present) == 1:
+                    img_path = os.path.join(project_dir, 'memory', 'characters', f"{char_data.get('id')}.png")
+                    if os.path.exists(img_path):
+                        ref_images.append(img_path)
             else:
                 dna_descriptions.append(char_name)
                 
@@ -45,5 +55,6 @@ class PromptGenerator:
             "scene_id": scene.get("scene_id"),
             "prompt": full_prompt,
             "negative_prompt": "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
-            "metadata": scene
+            "metadata": scene,
+            "reference_images": ref_images
         }
