@@ -202,7 +202,24 @@ def main():
     if args.stage in ['all', 'export']:
         logger.info("Running Export Engine...")
         import shutil
-        export_dir = os.path.join(pm.project_dir, 'export')
+        import json
+        import re
+        import subprocess
+        
+        # 1. Read SEO metadata to get the clickbait title
+        title = "Export"
+        seo_path = os.path.join(pm.dirs['output'], 'seo_metadata.json')
+        if os.path.exists(seo_path):
+            try:
+                with open(seo_path, 'r', encoding='utf-8') as f:
+                    seo_data = json.load(f)
+                    raw_title = seo_data.get('title', 'Export')
+                    # Clean title for folder name (remove illegal characters and spaces)
+                    title = re.sub(r'[\\/*?:"<>|]', "", raw_title).strip().replace(" ", "_")
+            except Exception as e:
+                logger.warning(f"Could not read SEO title: {e}")
+                
+        export_dir = os.path.join(pm.project_dir, 'export', title)
         os.makedirs(export_dir, exist_ok=True)
         
         # Copy memory db
@@ -218,7 +235,6 @@ def main():
                     from core.memory.database import Character
                     chars = session.query(Character).all()
                     data = [{"name": c.canonical_name, "visual_dna": c.visual_dna} for c in chars]
-                    import json
                     with open(os.path.join(export_dir, 'characters_dump.json'), 'w', encoding='utf-8') as f:
                         json.dump(data, f, indent=2)
                 logger.info("Generated human-readable characters_dump.json.")
@@ -234,6 +250,18 @@ def main():
                     logger.info(f"Packaged video: {f}")
                 
         logger.info(f"Exported all final assets to {export_dir}")
+        
+        # Git push automatically
+        logger.info("Pushing packaged folder to GitHub...")
+        try:
+            # Add only the specific export folder
+            export_rel_path = f"projects/{args.project}/export/{title}"
+            subprocess.run(['git', 'add', export_rel_path], check=True, cwd=base_dir)
+            subprocess.run(['git', 'commit', '-m', f"Auto-publish: {title}"], check=True, cwd=base_dir)
+            subprocess.run(['git', 'push'], check=True, cwd=base_dir)
+            logger.info("Successfully pushed video package to GitHub!")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Git push failed. You may need to authenticate. Error: {e}")
 
     logger.info("Pipeline completed successfully.")
 
