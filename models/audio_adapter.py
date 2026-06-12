@@ -11,8 +11,8 @@ class LocalAudioAdapter:
     def __init__(self):
         from core.config_manager import ConfigManager
         config = ConfigManager()
-        self.model_name = "tts_models/en/ljspeech/vits"
-        self.speaker = None
+        self.model_name = config.get('models.audio.model', "tts_models/en/ljspeech/vits")
+        self.speaker = config.get('models.audio.voice', None)
         self.tts = None
         self._init_tts()
 

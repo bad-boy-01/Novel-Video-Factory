@@ -103,7 +103,8 @@ def main():
         
         memory_db = MemoryEngine(pm.project_dir)
         planner = ScenePlanner(llm_adapter)
-        prompter = PromptGenerator(memory_db)
+        style_modifier = config_manager.get('prompts.style_modifier', 'Cinematic, high quality Korean Manhwa style, detailed line art, masterpiece, best quality')
+        prompter = PromptGenerator(memory_db, base_style=style_modifier)
         
         # Read translated output
         translated_files = [f for f in os.listdir(pm.dirs['output']) if f.startswith('translated_')]
@@ -248,6 +249,12 @@ def main():
                 if f.endswith('.mp4'):
                     shutil.copy(os.path.join(output_dir, f), os.path.join(export_dir, f))
                     logger.info(f"Packaged video: {f}")
+                    
+        # Copy configuration file
+        config_path = os.path.abspath(args.config)
+        if os.path.exists(config_path):
+            shutil.copy(config_path, os.path.join(export_dir, 'pipeline_config.yaml'))
+            logger.info("Packaged pipeline configuration.")
                 
         logger.info(f"Exported all final assets to {export_dir}")
         
