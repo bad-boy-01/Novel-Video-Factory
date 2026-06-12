@@ -1,8 +1,10 @@
 import os
+import logging
+
 os.environ["SDL_AUDIODRIVER"] = "dummy"
+os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 import json
-import logging
 from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
 
 logger = logging.getLogger(__name__)
