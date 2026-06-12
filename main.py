@@ -70,31 +70,40 @@ def main():
     if args.stage in ['all', 'memory']:
         logger.info("Running Memory Engine...")
         from core.memory.extractor import MemoryExtractor
+        from core.translation.pipeline import TranslationPipeline
+        import uuid
+        
         extractor = MemoryExtractor(llm_adapter)
         memory_db = MemoryEngine(pm.project_dir)
+        text_chunker = TranslationPipeline(config={}, llm_adapter=None)
         
         translated_files = [f for f in os.listdir(pm.dirs['output']) if f.startswith('translated_')]
         for file in translated_files:
             text = pm.read_input(os.path.join(pm.dirs['output'], file))
+            chunks = text_chunker.chunk_text(text, max_words=500)
             
-            # Character extraction
-            chars = extractor.extract_characters(text[:2000])
-            for idx, c in enumerate(chars):
-                c_id = f"C{idx:03d}"
-                memory_db.add_character(c_id, c.get('canonical_name', 'Unknown'), c.get('visual_dna', {}))
-                logger.info(f"Saved character to DB: {c.get('canonical_name')}")
+            for chunk_idx, chunk_data in enumerate(chunks):
+                chunk_text = " ".join([s["text"] for s in chunk_data["sentences"]])
+                logger.info(f"Extracting Memory from Chunk {chunk_idx + 1}/{len(chunks)}")
                 
-            # Location extraction
-            locs = extractor.extract_locations(text[:2000])
-            for loc in locs:
-                memory_db.add_location(loc.get('canonical_name', 'Unknown'), loc.get('description', ''))
-                logger.info(f"Saved location to DB: {loc.get('canonical_name')}")
-                
-            # World Concept extraction
-            concepts = extractor.extract_world_concepts(text[:2000])
-            for concept in concepts:
-                memory_db.add_world_concept(concept.get('concept_type', 'misc'), concept.get('name', 'Unknown'), concept.get('description', ''))
-                logger.info(f"Saved world concept to DB: {concept.get('name')}")
+                # Character extraction
+                chars = extractor.extract_characters(chunk_text)
+                for c in chars:
+                    c_id = str(uuid.uuid4())[:8]
+                    memory_db.add_character(c_id, c.get('canonical_name', 'Unknown'), c.get('visual_dna', {}))
+                    logger.info(f"Saved character to DB: {c.get('canonical_name')}")
+                    
+                # Location extraction
+                locs = extractor.extract_locations(chunk_text)
+                for loc in locs:
+                    memory_db.add_location(loc.get('canonical_name', 'Unknown'), loc.get('description', ''))
+                    logger.info(f"Saved location to DB: {loc.get('canonical_name')}")
+                    
+                # World Concept extraction
+                concepts = extractor.extract_world_concepts(chunk_text)
+                for concept in concepts:
+                    memory_db.add_world_concept(concept.get('concept_type', 'misc'), concept.get('name', 'Unknown'), concept.get('description', ''))
+                    logger.info(f"Saved world concept to DB: {concept.get('name')}")
 
     if args.stage in ['all', 'visual']:
         logger.info("Running Visual Planning...")
