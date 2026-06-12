@@ -69,9 +69,7 @@ def main():
     if os.path.exists(cache_file):
         os.remove(cache_file)
         print(f"Cleared cache: {cache_file}")
-    if os.path.exists(db_file):
-        os.remove(db_file)
-        print(f"Cleared memory database: {db_file}")
+    # Memory database (novel_memory.db) is intentionally NOT deleted to preserve character visual DNA across chapter runs.
 
     # Force full English translation bypass
     chapter_txt = os.path.join(project_input_dir, "chapter1.txt")
