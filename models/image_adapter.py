@@ -40,8 +40,8 @@ class LocalImageAdapter:
             except Exception:
                 pass
                 
-            self.pipeline.to("cuda")
-            logger.info(f"Initialized Diffusers pipeline for {self.model_name} on CUDA")
+            self.pipeline.enable_model_cpu_offload()
+            logger.info(f"Initialized Diffusers pipeline for {self.model_name} with CPU offloading")
         except ImportError:
             logger.warning("Diffusers/Torch not installed properly. Running Image Adapter in MOCK mode.")
             self.pipeline = None
