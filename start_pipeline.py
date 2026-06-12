@@ -52,10 +52,18 @@ def main():
     print("Ensuring qwen2.5:7b is pulled...")
     subprocess.run("ollama pull qwen2.5:7b", shell=True)
 
+    import shutil
+
     # 4. Storage & Cache Reset
     print("\n[4/5] Resetting Caches for Clean Generation...")
     cache_file = f"projects/{project_name}/cache_manifest.json"
     db_file = "core/memory/characters.db"
+    output_dir = f"projects/{project_name}/output"
+    
+    if os.path.exists(output_dir):
+        shutil.rmtree(output_dir)
+        print(f"Cleared output directory: {output_dir}")
+    os.makedirs(output_dir, exist_ok=True)
     
     if os.path.exists(cache_file):
         os.remove(cache_file)
@@ -63,6 +71,16 @@ def main():
     if os.path.exists(db_file):
         os.remove(db_file)
         print(f"Cleared memory database: {db_file}")
+
+    # Force full English translation bypass
+    chapter_txt = os.path.join(project_input_dir, "chapter1.txt")
+    if os.path.exists(chapter_txt):
+        shutil.copy(chapter_txt, os.path.join(output_dir, "translated_chapter1.txt"))
+        with open(cache_file, "w") as f: 
+            f.write('{"translate": true}')
+        print("Full English script mapped successfully! Bypassing the translation summarizer.")
+    else:
+        print(f"WARNING: No chapter1.txt found in {project_input_dir}. Please ensure your story file is uploaded.")
 
     # 5. Pipeline Execution
     print("\n[5/5] Launching Main Pipeline...")
