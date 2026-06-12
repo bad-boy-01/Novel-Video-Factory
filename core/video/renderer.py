@@ -128,3 +128,34 @@ class VideoRenderer:
                     c.close()
             except Exception as e:
                 logger.warning(f"Failed to close all clips: {e}")
+
+        # If we had multiple batches, concatenate them into one final video using FFmpeg
+        if len(batches) > 1:
+            logger.info("Stitching all batch videos together using FFmpeg (zero RAM consumption)...")
+            import subprocess
+            list_path = os.path.join(self.output_dir, 'concat_list.txt')
+            try:
+                with open(list_path, 'w', encoding='utf-8') as f:
+                    for i in range(len(batches)):
+                        part_file = f"final_video_part{i + 1}.mp4"
+                        # FFmpeg requires forward slashes or escaped paths in the text file
+                        f.write(f"file '{part_file}'\n")
+                
+                master_video_path = os.path.join(self.output_dir, 'final_video_master.mp4')
+                subprocess.run([
+                    'ffmpeg', '-y', '-f', 'concat', '-safe', '0', 
+                    '-i', list_path, '-c', 'copy', master_video_path
+                ], check=True, cwd=self.output_dir, capture_output=True)
+                
+                logger.info(f"Successfully stitched all parts into: {master_video_path}")
+                
+                # Cleanup the part files and list
+                os.remove(list_path)
+                for i in range(len(batches)):
+                    os.remove(os.path.join(self.output_dir, f"final_video_part{i + 1}.mp4"))
+                    
+                # Rename master to final_video.mp4
+                os.rename(master_video_path, self.final_video_path)
+                logger.info("Cleaned up batch files. Final video is ready!")
+            except Exception as e:
+                logger.error(f"Failed to stitch video batches using FFmpeg: {e}")
