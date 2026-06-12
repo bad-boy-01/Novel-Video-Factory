@@ -49,7 +49,8 @@ class PromptGenerator:
         
         character_prompt = ", ".join(dna_descriptions)
         
-        full_prompt = f"{self.base_style}. {camera}. {action_desc}. {character_prompt}. {lighting}."
+        # Put base_style at the end so if CLIP truncates >77 tokens, it only loses generic style tags, not critical lighting/character data
+        full_prompt = f"{camera}. {action_desc}. {lighting}. {character_prompt}. {self.base_style}."
         
         return {
             "scene_id": scene.get("scene_id"),

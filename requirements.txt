@@ -11,3 +11,4 @@ pydantic
 pyyaml
 pytest
 python-dotenv
+compel
