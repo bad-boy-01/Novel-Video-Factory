@@ -118,25 +118,6 @@ def main():
         else:
             logger.warning("No prompts.json found. Run the visual stage first.")
             
-    if args.stage in ['all', 'video']:
-        logger.info("Running Video Production...")
-        from core.video.renderer import VideoRenderer
-        renderer = VideoRenderer(pm.project_dir)
-        renderer.render()
-
-    if args.stage in ['all', 'publishing']:
-        logger.info("Running Publishing Engine...")
-        from core.publishing.generator import PublishingGenerator
-        pub_gen = PublishingGenerator(llm_adapter, pm.project_dir)
-        
-        translated_files = [f for f in os.listdir(pm.dirs['output']) if f.startswith('translated_')]
-        full_text = ""
-        for file in translated_files:
-            full_text += pm.read_input(os.path.join(pm.dirs['output'], file)) + "\n"
-            
-        pub_gen.generate_seo_metadata(full_text[:3000])
-        pub_gen.select_thumbnail()
-
     if args.stage in ['all', 'audio']:
         logger.info("Running Audio Generation...")
         from models.audio_adapter import LocalAudioAdapter
@@ -161,6 +142,25 @@ def main():
                 audio_adapter.generate_audio(narration_text, output_path)
         else:
             logger.warning("No prompts.json found. Run the visual stage first.")
+
+    if args.stage in ['all', 'video']:
+        logger.info("Running Video Production...")
+        from core.video.renderer import VideoRenderer
+        renderer = VideoRenderer(pm.project_dir)
+        renderer.render()
+
+    if args.stage in ['all', 'publishing']:
+        logger.info("Running Publishing Engine...")
+        from core.publishing.generator import PublishingGenerator
+        pub_gen = PublishingGenerator(llm_adapter, pm.project_dir)
+        
+        translated_files = [f for f in os.listdir(pm.dirs['output']) if f.startswith('translated_')]
+        full_text = ""
+        for file in translated_files:
+            full_text += pm.read_input(os.path.join(pm.dirs['output'], file)) + "\n"
+            
+        pub_gen.generate_seo_metadata(full_text[:3000])
+        pub_gen.select_thumbnail()
 
     if args.stage in ['all', 'memory']:
         logger.info("Running Memory Engine...")
