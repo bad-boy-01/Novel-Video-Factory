@@ -25,7 +25,7 @@ models:
     model: "qwen2.5:7b"
   image_generation:
     provider: "diffusers" # diffusers or comfyui
-    model: "black-forest-labs/FLUX.1-schnell" # Using local diffusers script
+    model: "cagliostrolab/animagine-xl-3.1" # Open anime SDXL model
   audio:
     provider: "coqui"
     model: "tts_models/en/vctk/vits"
