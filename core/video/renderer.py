@@ -64,7 +64,7 @@ class VideoRenderer:
                         from core.config_manager import ConfigManager
                         config = ConfigManager()
                         
-                        subtitle_text = p.get('metadata', {}).get('description', '')
+                        subtitle_text = p.get('metadata', {}).get('narration_text', '')
                         
                         if subtitle_text:
                             txt_clip = TextClip(

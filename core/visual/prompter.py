@@ -33,7 +33,7 @@ class PromptGenerator:
                 dna_descriptions.append(char_name)
                 
         # Build prompt
-        action_desc = scene.get('description', '')
+        action_desc = scene.get('visual_prompt_tags', '')
         camera = scene.get('camera_angle', 'medium shot')
         lighting = scene.get('lighting', 'cinematic lighting')
         

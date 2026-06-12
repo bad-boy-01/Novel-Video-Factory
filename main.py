@@ -67,6 +67,35 @@ def main():
                 
             cache.mark_stage_complete('translate', input_files)
 
+    if args.stage in ['all', 'memory']:
+        logger.info("Running Memory Engine...")
+        from core.memory.extractor import MemoryExtractor
+        extractor = MemoryExtractor(llm_adapter)
+        memory_db = MemoryEngine(pm.project_dir)
+        
+        translated_files = [f for f in os.listdir(pm.dirs['output']) if f.startswith('translated_')]
+        for file in translated_files:
+            text = pm.read_input(os.path.join(pm.dirs['output'], file))
+            
+            # Character extraction
+            chars = extractor.extract_characters(text[:2000])
+            for idx, c in enumerate(chars):
+                c_id = f"C{idx:03d}"
+                memory_db.add_character(c_id, c.get('canonical_name', 'Unknown'), c.get('visual_dna', {}))
+                logger.info(f"Saved character to DB: {c.get('canonical_name')}")
+                
+            # Location extraction
+            locs = extractor.extract_locations(text[:2000])
+            for loc in locs:
+                memory_db.add_location(loc.get('canonical_name', 'Unknown'), loc.get('description', ''))
+                logger.info(f"Saved location to DB: {loc.get('canonical_name')}")
+                
+            # World Concept extraction
+            concepts = extractor.extract_world_concepts(text[:2000])
+            for concept in concepts:
+                memory_db.add_world_concept(concept.get('concept_type', 'misc'), concept.get('name', 'Unknown'), concept.get('description', ''))
+                logger.info(f"Saved world concept to DB: {concept.get('name')}")
+
     if args.stage in ['all', 'visual']:
         logger.info("Running Visual Planning...")
         from core.visual.planner import ScenePlanner
@@ -144,9 +173,8 @@ def main():
                 
             for p in prompts_data:
                 scene_id = p.get('scene_id')
-                # In a real pipeline, the narration text should be passed from the translation script
-                # Here we will just use the scene description as narration for testing
-                narration_text = p.get('metadata', {}).get('description', 'Silence.')
+                # Read the exact script dialogue for subtitles/audio
+                narration_text = p.get('metadata', {}).get('narration_text', 'Silence.')
                 output_path = os.path.join(audio_dir, f"{scene_id}.wav")
                 
                 audio_adapter.generate_audio(narration_text, output_path)
@@ -172,34 +200,6 @@ def main():
         pub_gen.generate_seo_metadata(full_text[:3000])
         pub_gen.select_thumbnail()
 
-    if args.stage in ['all', 'memory']:
-        logger.info("Running Memory Engine...")
-        from core.memory.extractor import MemoryExtractor
-        extractor = MemoryExtractor(llm_adapter)
-        memory_db = MemoryEngine(pm.project_dir)
-        
-        translated_files = [f for f in os.listdir(pm.dirs['output']) if f.startswith('translated_')]
-        for file in translated_files:
-            text = pm.read_input(os.path.join(pm.dirs['output'], file))
-            
-            # Character extraction
-            chars = extractor.extract_characters(text[:2000])
-            for idx, c in enumerate(chars):
-                c_id = f"C{idx:03d}"
-                memory_db.add_character(c_id, c.get('canonical_name', 'Unknown'), c.get('visual_dna', {}))
-                logger.info(f"Saved character to DB: {c.get('canonical_name')}")
-                
-            # Location extraction
-            locs = extractor.extract_locations(text[:2000])
-            for loc in locs:
-                memory_db.add_location(loc.get('canonical_name', 'Unknown'), loc.get('description', ''))
-                logger.info(f"Saved location to DB: {loc.get('canonical_name')}")
-                
-            # World Concept extraction
-            concepts = extractor.extract_world_concepts(text[:2000])
-            for concept in concepts:
-                memory_db.add_world_concept(concept.get('concept_type', 'misc'), concept.get('name', 'Unknown'), concept.get('description', ''))
-                logger.info(f"Saved world concept to DB: {concept.get('name')}")
 
     logger.info("Pipeline completed successfully.")
 
