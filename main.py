@@ -129,7 +129,7 @@ def main():
                             dna_tags.append(v)
                     dna_str = ", ".join(dna_tags)
                     
-                    prompt = f"1boy/1girl, {dna_str}, character reference sheet, white background, simple background, front view, full body, {style_modifier}"
+                    prompt = f"1boy/1girl, {dna_str}, cinematic portrait, detailed background, looking at viewer, masterpiece, {style_modifier}"
                     negative = config_manager.get('prompts.negative_prompt', 'ugly, bad anatomy')
                     image_adapter.generate_image(prompt, img_path, negative_prompt=negative)
                 else:

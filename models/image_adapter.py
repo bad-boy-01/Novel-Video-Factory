@@ -29,7 +29,7 @@ class LocalImageAdapter:
             # IP Adapter support for SDXL
             try:
                 self.pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="sdxl_models", weight_name="ip-adapter_sdxl.bin")
-                self.pipeline.set_ip_adapter_scale(0.5)
+                self.pipeline.set_ip_adapter_scale(0.35)
                 logger.info("IP-Adapter loaded successfully for Character Reference injection.")
             except Exception as e:
                 logger.warning(f"Could not load IP-Adapter. Falling back to text-only generation. {e}")
