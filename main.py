@@ -109,7 +109,6 @@ def main():
         translated_files = [f for f in os.listdir(pm.dirs['output']) if f.startswith('translated_')]
         all_prompts = []
         
-        from core.translation.pipeline import TranslationPipeline
         # We instantiate a dummy pipeline just to use its chunk_text utility
         text_chunker = TranslationPipeline(config={}, llm_adapter=None)
         
