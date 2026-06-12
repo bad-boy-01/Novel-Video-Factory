@@ -11,7 +11,7 @@ class LocalImageAdapter:
     def __init__(self):
         from core.config_manager import ConfigManager
         config = ConfigManager()
-        self.model_name = config.get('models.image_generation.model', "black-forest-labs/FLUX.1-schnell")
+        self.model_name = config.get('models.image_generation.model', "cagliostrolab/animagine-xl-3.1")
         self.pipeline = None
         self.width = config.get('models.image.width', 1280)
         self.height = config.get('models.image.height', 720)
@@ -42,8 +42,8 @@ class LocalImageAdapter:
             image = self.pipeline(
                 prompt,
                 negative_prompt=negative_prompt,
-                num_inference_steps=4, # FLUX Schnell requires fewer steps
-                guidance_scale=0.0
+                num_inference_steps=25, # SDXL requires ~25 steps
+                guidance_scale=7.0
             ).images[0]
             image.save(output_path)
             logger.info(f"Saved real generated image to {output_path}")
