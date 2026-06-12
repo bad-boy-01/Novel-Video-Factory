@@ -39,7 +39,7 @@ class PromptGenerator:
         
         character_prompt = ", ".join(dna_descriptions)
         
-        full_prompt = f"{self.base_style}. {camera}. {lighting}. {character_prompt}. {action_desc}"
+        full_prompt = f"{self.base_style}. {camera}. {action_desc}. {character_prompt}. {lighting}."
         
         return {
             "scene_id": scene.get("scene_id"),
