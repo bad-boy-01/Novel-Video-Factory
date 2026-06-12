@@ -1,0 +1,51 @@
+# Default Configuration for Novel Video Factory
+
+project:
+  language:
+    source: "Chinese"
+    target: "English"
+  currency:
+    mode: "preserve" # preserve, replace_symbol_keep_number
+  units:
+    mode: "hybrid" # preserve, hybrid, convert
+
+models:
+  translation:
+    primary:
+      provider: "ollama"
+      model: "qwen2.5:7b" # Or llama3.1
+    backup:
+      provider: "ollama"
+      model: "gemma2"
+  revision:
+    provider: "ollama"
+    model: "qwen2.5:7b"
+  prompt_generation:
+    provider: "ollama"
+    model: "qwen2.5:7b"
+  image_generation:
+    provider: "diffusers" # diffusers or comfyui
+    model: "black-forest-labs/FLUX.1-schnell" # Using local diffusers script
+  audio:
+    provider: "coqui"
+    model: "tts_models/en/vctk/vits"
+    voice: "p267"
+
+hardware:
+  device: "cuda" # cuda, cpu, mps
+  precision: "fp16" # fp16, bf16, fp32
+
+video:
+  font: "Arial"
+  font_size: 40
+  fps: 24
+  crossfade_duration: 0.5
+  output_format: "mp4"
+
+prompts:
+  style_modifier: "high-quality, cinematic, 'Korean Manhwa' style, detailed lighting, masterpiece"
+  negative_prompt: "ugly, blurry, low res, extra limbs, bad anatomy"
+
+system:
+  cache_enabled: true
+  qa_enabled: true

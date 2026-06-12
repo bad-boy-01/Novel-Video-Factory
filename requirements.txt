@@ -1,0 +1,13 @@
+ollama
+diffusers
+transformers
+accelerate
+torch
+moviepy
+ffmpeg-python
+coqui-tts
+SQLAlchemy
+pydantic
+pyyaml
+pytest
+python-dotenv
