@@ -46,7 +46,7 @@ class VideoRenderer:
                     duration = 3.0
                     
                 # Load Image and set duration to match audio
-                img_clip = ImageClip(img_path).with_duration(duration)
+                img_clip = ImageClip(img_path).set_duration(duration)
                 
                 try:
                     # Generate Subtitle
@@ -63,14 +63,14 @@ class VideoRenderer:
                             font_size=config.get('video.font_size', 40),
                             color='white',
                             bg_color='black'
-                        ).with_position(('center', 'bottom')).with_duration(duration)
+                        ).set_position(('center', 'bottom')).set_duration(duration)
                         
                         # Composite the text over the image
                         img_clip = CompositeVideoClip([img_clip, txt_clip])
                 except Exception as text_e:
                     logger.warning(f"Failed to generate TextClip (ImageMagick might be missing): {text_e}")
 
-                img_clip = img_clip.with_audio(audio_clip)
+                img_clip = img_clip.set_audio(audio_clip)
                 
                 # Basic fade transition (fadein for half a second)
                 if len(clips) > 0:
