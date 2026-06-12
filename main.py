@@ -80,14 +80,24 @@ def main():
         translated_files = [f for f in os.listdir(pm.dirs['output']) if f.startswith('translated_')]
         all_prompts = []
         
+        from core.translation.pipeline import TranslationPipeline
+        # We instantiate a dummy pipeline just to use its chunk_text utility
+        text_chunker = TranslationPipeline(config={}, llm_adapter=None)
+        
         for file in translated_files:
             text = pm.read_input(os.path.join(pm.dirs['output'], file))
-            scenes = planner.plan_scenes(text[:2000]) # Avoid token limit for test
+            chunks = text_chunker.chunk_text(text, max_words=500)
             
-            for scene in scenes:
-                prompt_data = prompter.generate_prompt_for_scene(scene)
-                all_prompts.append(prompt_data)
-                logger.info(f"Generated prompt for {scene.get('scene_id')}: {prompt_data['prompt']}")
+            for chunk_idx, chunk_data in enumerate(chunks):
+                chunk_text = " ".join([s["text"] for s in chunk_data["sentences"]])
+                logger.info(f"Visual Planning for Chunk {chunk_idx + 1}/{len(chunks)} ({chunk_data['word_count']} words)")
+                
+                scenes = planner.plan_scenes(chunk_text)
+                
+                for scene in scenes:
+                    prompt_data = prompter.generate_prompt_for_scene(scene)
+                    all_prompts.append(prompt_data)
+                    logger.info(f"Generated prompt for {scene.get('scene_id')}: {prompt_data['prompt']}")
                 
         # Save prompts
         import json
