@@ -2,6 +2,9 @@
 echo "Starting Novel Video Factory Kaggle Setup..."
 
 # 1. Install Ollama
+echo "Installing prerequisites..."
+apt-get update && apt-get install -y zstd
+
 echo "Installing Ollama..."
 curl -fsSL https://ollama.com/install.sh | sh
 
