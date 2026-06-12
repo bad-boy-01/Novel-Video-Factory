@@ -27,7 +27,8 @@ def main():
     if os.path.exists("/usr/bin/apt-get"):
         try:
             subprocess.run("apt-get update && apt-get install -y espeak-ng imagemagick", shell=True, check=True)
-            print("System dependencies installed.")
+            subprocess.run("curl -fsSL https://ollama.com/install.sh | sh", shell=True, check=True)
+            print("System dependencies and Ollama installed.")
         except subprocess.CalledProcessError as e:
             print(f"Warning: Failed to install system dependencies (are you root?): {e}")
     else:
