@@ -55,29 +55,54 @@ class VideoRenderer:
                     if duration < 1.0:
                         duration = 3.0
                         
-                    # Load Image and set duration
+                    # Load Image
                     img_clip = ImageClip(img_path).set_duration(duration)
                     
+                    # Layer 8.1: Ken Burns Effect (Dynamic Motion)
+                    # We implement a slow zoom to make it feel 'alive'
+                    import random
+                    zoom_direction = random.choice(['in', 'out'])
+                    zoom_speed = 0.05 # Slow cinematic zoom
+                    
+                    def zoom_effect(t):
+                        if zoom_direction == 'in':
+                            return 1 + (zoom_speed * t / duration)
+                        else:
+                            return 1 + zoom_speed - (zoom_speed * t / duration)
+                            
+                    # Move to center and zoom
+                    img_clip = img_clip.resize(zoom_effect).set_position('center')
+                    
                     try:
-                        # Generate Subtitle
-                        from moviepy.editor import TextClip, CompositeVideoClip
+                        # Layer 8.2: Cinematic Subtitles
+                        from moviepy.editor import TextClip, CompositeVideoClip, ColorClip
                         from core.config_manager import ConfigManager
                         config = ConfigManager()
                         
                         subtitle_text = p.get('metadata', {}).get('narration_text', '')
                         
                         if subtitle_text:
+                            # Enhanced TextClip with better readability
                             txt_clip = TextClip(
                                 subtitle_text,
-                                font=config.get('video.font', 'Arial'),
-                                fontsize=config.get('video.font_size', 40),
+                                font=config.get('video.font', 'Arial-Bold'),
+                                fontsize=config.get('video.font_size', 44),
                                 color='white',
-                                bg_color='black',
                                 method='caption',
-                                size=(img_clip.w - 100, None)
-                            ).set_position(('center', 'bottom')).set_duration(duration)
+                                size=(img_clip.w * 0.8, None),
+                                align='center'
+                            ).set_duration(duration)
                             
-                            img_clip = CompositeVideoClip([img_clip, txt_clip])
+                            # Add a semi-transparent dark bar behind the text
+                            bg_w = img_clip.w
+                            bg_h = txt_clip.h + 40
+                            txt_bg = ColorClip(size=(bg_w, bg_h), color=(0, 0, 0)).set_opacity(0.4).set_duration(duration)
+                            
+                            # Position background and text at bottom
+                            txt_bg = txt_bg.set_position(('center', 'bottom'))
+                            txt_clip = txt_clip.set_position(('center', bg_h/2 - txt_clip.h/2 + (img_clip.h - bg_h)))
+                            
+                            img_clip = CompositeVideoClip([img_clip, txt_bg, txt_clip])
                     except Exception as text_e:
                         logger.warning(f"Failed to generate TextClip: {text_e}")
 

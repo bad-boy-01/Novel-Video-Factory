@@ -77,13 +77,14 @@ class PromptGenerator:
         
         character_prompt = ", ".join(dna_descriptions)
         
-        # Move Manhwa style tags to the front to avoid truncation
-        manhwa_core = "manhwa, webtoon, korean style, thick outlines"
+        # Quality and Style Tags for Animagine XL 4.0 Manhwa style
         quality_tags = "masterpiece, high score, great score"
+        manhwa_core = "manhwa, webtoon, korean style, thick outlines"
+        cinematic_tags = "cinematic lighting, atmospheric, moody, melancholic, soft focus, high resolution"
         
         # Build Structured Prompt: Style -> Subject -> Action -> Quality
-        # This ensures the core style is NEVER truncated
-        full_prompt = f"{manhwa_core}, {character_prompt}, {camera}, {action_desc}, {lighting}, ancient chinese architecture, {quality_tags}, rating_safe"
+        # This ensures the core style and atmospheric lighting are prioritized
+        full_prompt = f"{manhwa_core}, {character_prompt}, {camera}, {action_desc}, {lighting}, {cinematic_tags}, ancient chinese architecture, {quality_tags}, rating_safe"
         
         return {
             "scene_id": scene.get("scene_id"),
