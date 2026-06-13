@@ -1,4 +1,5 @@
 import json
+import re
 import logging
 from typing import Dict, List
 
@@ -17,12 +18,12 @@ class MemoryExtractor:
         """
         system_prompt = (
             "You are an expert lore master. Read the following story text and extract all characters mentioned. "
-            "For each character, extract their canonical name, any aliases, and their 'Visual DNA' (hair color, eye color, clothing, etc.).\n"
+            "For each character, extract their canonical name, any aliases, and their 'Visual DNA'.\n"
             "CRITICAL RULES:\n"
-            "1. Use ONLY short, comma-separated Danbooru tags for the visual DNA (e.g., 'black hair, brown eyes, simple village clothes, tattered tunic'). DO NOT use full sentences or subjective descriptions like 'weak and listless'.\n"
-            "2. DO NOT write 'not specified' or 'unknown'. If a visual attribute is missing from the text, you MUST invent a highly plausible, consistent anime/manhwa design (e.g., 'black hair', 'brown eyes') and stick to it so the character has a concrete visual identity!\n"
+            "1. You MUST include specific Danbooru-style tags for 'age', 'body_type', 'face_info', 'hair', 'eyes', and 'clothing'. DO NOT use full sentences.\n"
+            "2. DO NOT write 'not specified' or 'unknown'. If a visual attribute is missing from the text, you MUST invent a highly plausible, consistent anime/manhwa design (e.g., 'muscular body', 'sharp jaw', '20s') and stick to it so the character has a concrete visual identity!\n"
             "Return the data STRICTLY as a valid JSON array of objects. Example: "
-            "[{\"canonical_name\": \"John Doe\", \"aliases\": [\"Johnny\"], \"visual_dna\": {\"hair\": \"black hair\", \"eyes\": \"blue eyes\", \"clothing\": \"red robe, loose clothing\"}}]"
+            "[{\"canonical_name\": \"John Doe\", \"aliases\": [\"Johnny\"], \"visual_dna\": {\"age\": \"20s\", \"body_type\": \"muscular\", \"face_info\": \"sharp jaw, scar on cheek\", \"hair\": \"black hair\", \"eyes\": \"blue eyes\", \"clothing\": \"red robe, loose clothing\"}}]"
         )
         
         response = self.llm.generate(text_chunk, system_prompt=system_prompt, temperature=0.1)
@@ -34,6 +35,9 @@ class MemoryExtractor:
                 response = response[7:]
             if response.endswith("```"):
                 response = response[:-3]
+                
+            # Strip trailing commas before list/dict closures
+            response = re.sub(r',\s*([\]}])', r'\1', response)
                 
             data = json.loads(response)
             if isinstance(data, list):
