@@ -78,15 +78,16 @@ class MemoryEngine:
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
 
-    def add_character(self, character_id: str, name: str, dna: dict):
+    def add_character(self, character_id: str, name: str, dna: dict) -> bool:
         with self.Session() as session:
             # Check if exists
             existing = session.query(Character).filter_by(canonical_name=name).first()
             if existing:
-                return
+                return False
             char = Character(id=character_id, canonical_name=name, visual_dna=dna)
             session.add(char)
             session.commit()
+            return True
 
     def get_character_by_name(self, name: str, chapter: int = None) -> dict:
         """Fetch a character's data, including visual DNA, by their name."""
@@ -136,20 +137,22 @@ class MemoryEngine:
                 }
             return None
 
-    def add_location(self, name: str, description: str):
+    def add_location(self, name: str, description: str) -> bool:
         with self.Session() as session:
             existing = session.query(Location).filter_by(canonical_name=name).first()
             if existing:
-                return
+                return False
             loc = Location(canonical_name=name, description=description)
             session.add(loc)
             session.commit()
+            return True
 
-    def add_world_concept(self, concept_type: str, name: str, description: str):
+    def add_world_concept(self, concept_type: str, name: str, description: str) -> bool:
         with self.Session() as session:
             existing = session.query(WorldConcept).filter_by(name=name).first()
             if existing:
-                return
+                return False
             concept = WorldConcept(concept_type=concept_type, name=name, description=description)
             session.add(concept)
             session.commit()
+            return True

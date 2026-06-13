@@ -94,20 +94,20 @@ def main():
                 chars = extractor.extract_characters(chunk_text)
                 for c in chars:
                     c_id = str(uuid.uuid4())[:8]
-                    memory_db.add_character(c_id, c.get('canonical_name', 'Unknown'), c.get('visual_dna', {}))
-                    logger.info(f"Saved character to DB: {c.get('canonical_name')}")
+                    if memory_db.add_character(c_id, c.get('canonical_name', 'Unknown'), c.get('visual_dna', {})):
+                        logger.info(f"Saved character to DB: {c.get('canonical_name')}")
                     
                 # Location extraction
                 locs = extractor.extract_locations(chunk_text)
                 for loc in locs:
-                    memory_db.add_location(loc.get('canonical_name', 'Unknown'), loc.get('description', ''))
-                    logger.info(f"Saved location to DB: {loc.get('canonical_name')}")
+                    if memory_db.add_location(loc.get('canonical_name', 'Unknown'), loc.get('description', '')):
+                        logger.info(f"Saved location to DB: {loc.get('canonical_name')}")
                     
                 # World Concept extraction
                 concepts = extractor.extract_world_concepts(chunk_text)
                 for concept in concepts:
-                    memory_db.add_world_concept(concept.get('concept_type', 'misc'), concept.get('name', 'Unknown'), concept.get('description', ''))
-                    logger.info(f"Saved world concept to DB: {concept.get('name')}")
+                    if memory_db.add_world_concept(concept.get('concept_type', 'misc'), concept.get('name', 'Unknown'), concept.get('description', '')):
+                        logger.info(f"Saved world concept to DB: {concept.get('name')}")
                     
                 # World Style extraction (only needed once per chapter/file)
                 if chunk_idx == 0:
