@@ -57,7 +57,14 @@ class PromptGenerator:
                     
                 # Look for reference image
                 if project_dir and len(characters_present) == 1:
-                    img_path = os.path.join(project_dir, 'memory', 'character_sheets', f"{char_data.get('id')}.png")
+                    import re
+                    safe_name = re.sub(r'[\\/*?:"<>|]', "", char_name).strip().replace(" ", "_")
+                    img_path = os.path.join(project_dir, 'memory', 'character_sheets', f"{safe_name}.png")
+                    
+                    # Fallback to ID-based naming for backward compatibility
+                    if not os.path.exists(img_path):
+                        img_path = os.path.join(project_dir, 'memory', 'character_sheets', f"{char_data.get('id')}.png")
+                        
                     if os.path.exists(img_path):
                         ref_images.append(img_path)
             else:

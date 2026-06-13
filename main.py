@@ -154,8 +154,10 @@ def main():
             from core.memory.database import Character
             characters = session.query(Character).all()
             for char in characters:
-                # Use character ID for filename to match what prompter.py expects
-                img_path = os.path.join(chars_dir, f"{char.id}.png")
+                # Sanitize name for filename to make it human readable
+                import re
+                safe_name = re.sub(r'[\\/*?:"<>|]', "", char.canonical_name).strip().replace(" ", "_")
+                img_path = os.path.join(chars_dir, f"{safe_name}.png")
                 
                 if not os.path.exists(img_path):
                     logger.info(f"Generating Character Reference Sheet for {char.canonical_name}...")
