@@ -48,7 +48,12 @@ class MemoryExtractor:
             # V3 Upgrade: Aggressive JSON Cleaning
             # 1. Remove trailing commas before closing braces/brackets
             response = re.sub(r',\s*([\]}])', r'\1', response)
-            # 2. Fix unescaped double quotes inside values (common LLM error)
+            
+            # 2. Fix common "LLM Comment" issue: "Value" (comment),
+            # This regex finds "String" followed by (Comment) and strips the comment.
+            response = re.sub(r'"([^"]*)"\s*\([^)]*\)', r'"\1"', response)
+            
+            # 3. Fix unescaped double quotes inside values (common LLM error)
             # This is a heuristic: replaces " with ' if it's not a JSON key/value delimiter
             # But safer to just try and catch the specific error
 
