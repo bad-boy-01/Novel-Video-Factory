@@ -158,20 +158,20 @@ def main():
                 if not loc.get('background_path') or not os.path.exists(bg_path):
                     logger.info(f"Generating Base Background for: {name}")
                     
-                    # V3 Upgrade: Unique Seed for Location
                     loc_seed = int(hashlib.sha256(name.encode('utf-8')).hexdigest(), 16) % 2147483647
                     
-                    manhwa_core = "manhwa, webtoon, korean style, sharp lineart, digital media, flat color, cel shading, thick outlines, vibrant colors"
-                    quality_tags = "masterpiece, high score, great score, absurdres"
+                    # Cinematic V5: Professional Manhwa Background
+                    manhwa_core = "manhwa, webtoon style, digital media, official art, sharp lineart, uniform lines, flat color, cel shading, high contrast, vibrant colors"
+                    quality_tags = "masterpiece, best quality, official art, high resolution"
                     
-                    # Prioritize location description at the FRONT
-                    bg_prompt = f"{desc}, {manhwa_core}, landscape, detailed background, cinematic lighting, year 2024, {quality_tags}, rating_safe"
-                    negative = "watercolor, oil painting, traditional media, lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
+                    # Prioritize Art Style and Location
+                    bg_prompt = f"{manhwa_core}, {desc}, landscape, detailed background, cinematic lighting, bloom, year 2024, {quality_tags}, rating_safe"
+                    negative = "watercolor, oil painting, traditional media, sketch, pencil, canvas, textured paper, brush strokes, painterly, blurry, lowres, worst quality, low quality"
                     
                     bg_params = {
                         "seed": loc_seed,
                         "steps": 30,
-                        "cfg": 6.5, # High adherence for master backgrounds
+                        "cfg": 7.0, # Increased for sharper style adherence
                         "width": 1280,
                         "height": 720
                     }
@@ -232,22 +232,22 @@ def main():
                         # Extract age if possible or just use the DNA string
                         pass 
                     
-                    # Moving style tags to the front to avoid 77-token truncation
-                    quality_tags = "masterpiece, high score, great score, absurdres"
-                    manhwa_core = "manhwa, webtoon, korean style, sharp lineart, digital media, flat color, cel shading, thick outlines, vibrant colors"
+                    # Cinematic V5: Professional Manhwa Character Sheet
+                    quality_tags = "masterpiece, best quality, official art, high resolution"
+                    manhwa_core = "manhwa, webtoon style, digital media, official art, sharp lineart, uniform lines, flat color, cel shading, high contrast, vibrant colors"
                     year_tag = "year 2024"
                     
                     # Generate a unique but deterministic seed for this character
                     char_seed = int(hashlib.sha256(char.canonical_name.encode('utf-8')).hexdigest(), 16) % 2147483647
                     
-                    # Prioritize unique features at the FRONT of the prompt
-                    prompt = f"{gender_tag}, solo, {dna_str}, {manhwa_core}, traditional eastern clothing, cinematic portrait, {year_tag}, {quality_tags}, rating_safe"
-                    negative = "watercolor, oil painting, traditional media, lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
+                    # Prioritize Art Style and DNA
+                    prompt = f"{manhwa_core}, {gender_tag}, solo, {dna_str}, traditional eastern clothing, cinematic portrait, {year_tag}, {quality_tags}, rating_safe"
+                    negative = "watercolor, oil painting, traditional media, sketch, pencil, canvas, textured paper, brush strokes, painterly, blurry, lowres, bad anatomy, bad hands, text, error"
                     
                     char_params = {
                         "seed": char_seed,
                         "steps": 30,
-                        "cfg": 6.0,
+                        "cfg": 7.0, # Increased for sharper style adherence
                         "width": 1024,
                         "height": 1024
                     }

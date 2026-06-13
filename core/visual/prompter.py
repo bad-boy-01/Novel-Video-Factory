@@ -92,14 +92,18 @@ class PromptGenerator:
         
         character_prompt = ", ".join(dna_descriptions)
         
-        # Styles
-        quality_tags = "masterpiece, high score, great score, absurdres"
-        manhwa_core = "manhwa, webtoon, korean style, sharp lineart, digital media, flat color, cel shading, thick outlines, vibrant colors"
-        cinematic_tags = "cinematic lighting, atmospheric, moody, high resolution"
+        # Cinematic V5 Styles: Professional High-Contrast Manhwa
+        quality_tags = "masterpiece, best quality, official art, high resolution"
+        # The 'magic' sequence for that clean webtoon look:
+        manhwa_core = "manhwa, webtoon style, digital media, official art, sharp lineart, uniform lines, flat color, cel shading, high contrast, vibrant colors"
+        cinematic_tags = "cinematic lighting, bloom, backlighting, atmospheric"
         year_tag = "year 2024"
         
-        full_prompt = f"{character_prompt}, {staging_tags}, {action_tags}, {world_tags}{location_tags}{camera}, {manhwa_core}, {lighting}, {cinematic_tags}, {year_tag}, {quality_tags}, rating_safe"
-        negative_prompt = "watercolor, oil painting, traditional media, lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
+        # Build Structured Prompt: [Art Style] -> [Subject] -> [Action] -> [Context] -> [Quality]
+        full_prompt = f"{manhwa_core}, {character_prompt}, {staging_tags}, {action_tags}, {world_tags}{location_tags}{camera}, {lighting}, {cinematic_tags}, {year_tag}, {quality_tags}, rating_safe"
+        
+        # Aggressive Painterly/Watercolor Exclusion
+        negative_prompt = "watercolor, oil painting, traditional media, sketch, pencil, graphite, charcoal, canvas, textured paper, brush strokes, painterly, blurry, lowres, bad anatomy, bad hands, text, error, worst quality, low quality, signature, watermark, username"
         
         # Deterministic Seed
         import random, hashlib
