@@ -87,6 +87,8 @@ class OnlineLLMAdapter:
             self.api_url = "https://api.groq.com/openai/v1/chat/completions"
         elif self.provider == "openai":
             self.api_url = "https://api.openai.com/v1/chat/completions"
+        elif self.provider == "gemini":
+            self.api_url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
         else:
             raise ValueError(f"Unsupported provider: {provider}")
 
