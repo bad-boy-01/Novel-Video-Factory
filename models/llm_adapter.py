@@ -113,8 +113,9 @@ class OnlineLLMAdapter:
             # Gemini Free Tier limits to 15 Requests Per Minute (1 every 4 seconds)
             time.sleep(4.1)
         elif self.provider == "groq":
-            # Groq Free Tier limits to 30 Requests Per Minute (1 every 2 seconds)
-            time.sleep(2.1)
+            # Groq Free Tier limits to 6,000 Tokens Per Minute
+            # At ~1300 tokens per chunk, we can do max 4 chunks per minute (1 every 15 seconds)
+            time.sleep(15.1)
             
         if self.provider == "gemini":
             payload = {

@@ -33,11 +33,11 @@ class MemoryExtractor:
         response = self.llm.generate(text_chunk, system_prompt=system_prompt, temperature=0.1)
         
         try:
-            response = response.strip()
-            if response.startswith("```json"):
-                response = response[7:]
-            if response.endswith("```"):
-                response = response[:-3]
+            # Robust JSON extraction from markdown wrappers
+            import re
+            match = re.search(r'(\{.*\})', response, re.DOTALL)
+            if match:
+                response = match.group(1)
                 
             response = re.sub(r',\s*([\]}])', r'\1', response)
                 
