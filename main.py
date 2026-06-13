@@ -69,8 +69,6 @@ def main():
 
     if args.stage in ['all', 'memory']:
         logger.info("Running Memory Engine...")
-        from core.memory.extractor import MemoryExtractor
-        from core.translation.pipeline import TranslationPipeline
         import uuid
         
         extractor = MemoryExtractor(llm_adapter)
