@@ -81,6 +81,12 @@ def main():
     cache_file = f"projects/{project_name}/cache_manifest.json"
     db_file = "core/memory/characters.db"
     output_dir = f"projects/{project_name}/output"
+    lock_file = f"projects/{project_name}/.lock"
+    
+    # Automatically clear lock file if it exists (previous crash)
+    if os.path.exists(lock_file):
+        print(f"Clearing stale lock file: {lock_file}")
+        os.remove(lock_file)
     
     if args.resume:
         print("RESUME MODE ACTIVE: Preserving existing outputs and cache manifest.")
