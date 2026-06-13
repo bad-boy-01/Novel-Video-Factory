@@ -22,6 +22,7 @@ def main():
                         choices=['all', 'translate', 'memory', 'character_sheets', 'visual', 'generation', 'audio', 'video', 'publishing', 'export'],
                         help='Which stage of the pipeline to run')
     parser.add_argument('--config', default='config/default.yaml', help="Path to configuration file")
+    parser.add_argument('--input', help="Path to a novel script (.txt) to import into the project")
 
     args = parser.parse_args()
 
@@ -30,6 +31,16 @@ def main():
     config_manager = ConfigManager(args.config)
     base_dir = os.path.dirname(os.path.abspath(__file__))
     pm = ProjectManager(base_dir, args.project)
+
+    # Handle script import
+    if args.input:
+        if not os.path.exists(args.input):
+            logger.error(f"Input file not found: {args.input}")
+            sys.exit(1)
+        import shutil
+        dest = os.path.join(pm.dirs['input'], os.path.basename(args.input))
+        shutil.copy(args.input, dest)
+        logger.info(f"Imported script {args.input} to {dest}")
     
     # Initialize Adapters with Config values
     llm_provider = config_manager.get('models.translation.primary.provider', 'local')
@@ -96,7 +107,8 @@ def main():
                 logger.info(f"Extracting Memory from Chunk {chunk_idx + 1}/{len(chunks)}")
                 
                 # Batch extract all memory to save LLM API rate limits
-                memory_data = extractor.extract_all(chunk_text)
+                existing_chars = memory_db.get_all_characters()
+                memory_data = extractor.extract_all(chunk_text, existing_characters=existing_chars)
                 
                 # Characters
                 for c in memory_data.get("characters", []):
@@ -159,10 +171,19 @@ def main():
                     if any(w in dna_lower or w in name_lower for w in ["girl", "woman", "female", "sister", "mother", "wife", "chunni", "xiue", "mei", "her ", "she ", "madam", "dress", "aunt", "lady"]):
                         gender_tag = "1girl"
                     else:
-                        gender_tag = "1boy" # Defaults to boy for wuxia/manhwa protagonists unless female keywords found
+                        gender_tag = "1boy"
                     
-                    prompt = f"{gender_tag}, {dna_str}, cinematic portrait, detailed background, looking at viewer, masterpiece, {style_modifier}"
-                    negative = config_manager.get('prompts.negative_prompt', 'ugly, bad anatomy')
+                    # Add Age and Quality tags for Animagine XL 3.1
+                    age_tags = ""
+                    if "years old" in dna_lower or "age" in dna_lower:
+                        # Extract age if possible or just use the DNA string
+                        pass 
+                    
+                    # Better quality tags for Animagine XL 3.1
+                    quality_tags = "score_9, score_8_up, score_7_up, rating_safe"
+                    
+                    prompt = f"{quality_tags}, {gender_tag}, {dna_str}, cinematic portrait, detailed background, looking at viewer, masterpiece, {style_modifier}"
+                    negative = config_manager.get('prompts.negative_prompt', 'lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry')
                     image_adapter.generate_image(prompt, img_path, negative_prompt=negative)
                 else:
                     logger.info(f"Reference Sheet already exists for {char.canonical_name}, skipping.")

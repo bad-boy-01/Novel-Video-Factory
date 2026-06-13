@@ -8,6 +8,7 @@ def main():
     parser = argparse.ArgumentParser(description="Novel Video Factory Universal Orchestrator")
     parser.add_argument("project", nargs="?", default="novel", help="The name of the project folder (e.g. dummy_novel, chapter_1)")
     parser.add_argument("--resume", action="store_true", help="Resume a crashed generation by skipping cache/directory wipes")
+    parser.add_argument("--input", help="Path to a novel script (.txt) to import into the project")
     args = parser.parse_args()
     project_name = args.project
     
@@ -113,8 +114,10 @@ def main():
     # 5. Pipeline Execution
     print("\n[5/5] Launching Main Pipeline...")
     print("="*40)
+    
+    input_cmd = f" --input \"{args.input}\"" if args.input else ""
     process = subprocess.Popen(
-        f"python main.py {project_name} --stage all", 
+        f"python main.py {project_name} --stage all{input_cmd}", 
         shell=True, 
         stdout=subprocess.PIPE, 
         stderr=subprocess.STDOUT, 

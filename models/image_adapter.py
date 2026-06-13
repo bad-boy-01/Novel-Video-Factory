@@ -83,8 +83,8 @@ class LocalImageAdapter:
             logger.info(f"Saved real generated image to {output_path}")
         else:
             # Mock generation
-            logger.info(f"Generating mock image for prompt: {prompt[:50]}...")
-            time.sleep(1) # Simulate generation time
+            logger.info(f"Generating mock image for prompt: {prompt}")
+            time.sleep(0.1) 
             
             # Create a blank dummy image
             try:

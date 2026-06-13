@@ -4,20 +4,30 @@ A fully automated AI-powered production pipeline designed to transform long-form
 
 ## Quick Start Guide
 
-### 1. Creating a Project
-1. Create a new folder inside the `projects/` directory for your novel. For example: `projects/my_epic_novel/`
-2. Inside that folder, create an `input/` directory: `projects/my_epic_novel/input/`
-3. Drop your raw novel text files (e.g., `chapter1.txt`) into the `input/` folder.
+### 1. Creating a Project & Importing a Script
+You can now initialize a project and import a script in a single command:
+```bash
+python start_pipeline.py my_epic_novel --input "path/to/your/script.txt"
+```
+This will automatically:
+- Create the project folder structure in `projects/my_epic_novel/`.
+- Import your script into the `input/` directory.
+- Start the entire pipeline (Translation -> Memory -> Visual -> Generation -> Video).
 
 ### 2. Running Locally (Windows/Mac/Linux)
 You will need a powerful GPU to run the models locally.
 1. Install [Ollama](https://ollama.com/) and start the application.
-2. Open a terminal and run `ollama pull qwen2.5:7b` to download the language model.
-3. Open `models/image_adapter.py` and `models/audio_adapter.py` and **uncomment** the `diffusers` and `TTS` initialization lines (they are currently bypassed for testing).
-4. Run the pipeline:
+2. The orchestrator will automatically pull the required model (`qwen2.5:7b`) on first run.
+3. Ensure you have the required Python dependencies: `pip install -r requirements.txt`.
+4. Run the orchestrator:
    ```bash
-   python main.py my_epic_novel --stage all
+   python start_pipeline.py my_epic_novel
    ```
+
+### 3. Character Consistency & Reference Sheets
+The pipeline now features a "Character Sheets" stage that extracts detailed visual DNA (age, clothing, hair, etc.) and generates reference portraits for every character. These are stored in `projects/<name>/memory/character_sheets/`.
+- The system uses these reference images via **IP-Adapter** to ensure character consistency across every scene in your video.
+- To regenerate sheets or fix character DNA, you can edit the database directly or use the `--stage character_sheets` flag.
 
 ### 3. Running on Kaggle (Free Cloud GPUs)
 If you do not have a powerful local GPU, you can run this entirely for free on Kaggle!

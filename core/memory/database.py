@@ -1,4 +1,5 @@
 import os
+from typing import Dict, List
 from sqlalchemy import create_engine, Column, String, Integer, JSON, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -77,6 +78,18 @@ class MemoryEngine:
         self.engine = create_engine(f'sqlite:///{self.db_path}')
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
+
+    def get_all_characters(self) -> List[Dict]:
+        """Fetch all characters currently in the database."""
+        with self.Session() as session:
+            chars = session.query(Character).all()
+            return [
+                {
+                    "id": char.id,
+                    "canonical_name": char.canonical_name,
+                    "visual_dna": char.visual_dna
+                } for char in chars
+            ]
 
     def add_character(self, character_id: str, name: str, dna: dict) -> bool:
         with self.Session() as session:
