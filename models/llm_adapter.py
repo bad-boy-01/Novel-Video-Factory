@@ -88,7 +88,8 @@ class OnlineLLMAdapter:
         elif self.provider == "openai":
             self.api_url = "https://api.openai.com/v1/chat/completions"
         elif self.provider == "gemini":
-            self.api_url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+            # Using native Gemini REST API instead of OpenAI wrapper
+            self.api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent?key={self.api_key}"
         else:
             raise ValueError(f"Unsupported provider: {provider}")
 
@@ -104,20 +105,28 @@ class OnlineLLMAdapter:
             raise ValueError(f"Missing API key for {self.provider}")
             
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
         
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
-        
-        payload = {
-            "model": self.model_name,
-            "messages": messages,
-            "temperature": temperature
-        }
+        if self.provider == "gemini":
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": temperature}
+            }
+            if system_prompt:
+                payload["systemInstruction"] = {"parts": [{"text": system_prompt}]}
+        else:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+            
+            payload = {
+                "model": self.model_name,
+                "messages": messages,
+                "temperature": temperature
+            }
         
         import time
         max_retries = 5
@@ -137,7 +146,11 @@ class OnlineLLMAdapter:
                     
                 response.raise_for_status()
                 data = response.json()
-                return data["choices"][0]["message"]["content"]
+                
+                if self.provider == "gemini":
+                    return data["candidates"][0]["content"]["parts"][0]["text"]
+                else:
+                    return data["choices"][0]["message"]["content"]
                 
             except requests.exceptions.RequestException as e:
                 # If it's a 429 caught by raise_for_status, we handle it above.
