@@ -61,3 +61,58 @@ class LocalLLMAdapter:
             if "cinematic scenes" in (system_prompt or ""):
                 return '[{"scene_id": "SC001", "description": "A young man wearing a blue robe wakes up, looking at his hands in disbelief.", "characters_present": ["Xu Changshou"], "camera_angle": "Medium shot", "lighting": "Bright blinding light"}, {"scene_id": "SC002", "description": "An old man with a long white beard walks into the room.", "characters_present": ["Elder Lin"], "camera_angle": "Wide shot", "lighting": "Soft morning light"}]'
             return f"[MOCK TRANSLATION OF]: {prompt}"
+
+class OnlineLLMAdapter:
+    """
+    Adapter for communicating with cloud LLM providers like Groq or OpenAI via REST API.
+    """
+    def __init__(self, provider: str = "groq", model_name: str = "llama-3.3-70b-versatile", api_key: str = None):
+        import os
+        self.provider = provider.lower()
+        self.model_name = model_name
+        self.api_key = api_key or os.environ.get(f"{self.provider.upper()}_API_KEY")
+        
+        if self.provider == "groq":
+            self.api_url = "https://api.groq.com/openai/v1/chat/completions"
+        elif self.provider == "openai":
+            self.api_url = "https://api.openai.com/v1/chat/completions"
+        else:
+            raise ValueError(f"Unsupported provider: {provider}")
+
+    def check_health(self) -> bool:
+        if not self.api_key:
+            logger.warning(f"No API key found for {self.provider}. Please set {self.provider.upper()}_API_KEY in environment.")
+            return False
+        return True
+
+    def generate(self, prompt: str, system_prompt: str = None, temperature: float = 0.7) -> str:
+        if not self.api_key:
+            logger.error(f"Missing API key for {self.provider}")
+            raise ValueError(f"Missing API key for {self.provider}")
+            
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        
+        payload = {
+            "model": self.model_name,
+            "messages": messages,
+            "temperature": temperature
+        }
+        
+        try:
+            response = requests.post(self.api_url, headers=headers, json=payload, timeout=120)
+            response.raise_for_status()
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
+        except Exception as e:
+            logger.error(f"Error generating text with {self.provider} model {self.model_name}: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"API Response: {e.response.text}")
+            raise

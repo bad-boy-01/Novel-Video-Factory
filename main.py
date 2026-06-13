@@ -32,8 +32,14 @@ def main():
     pm = ProjectManager(base_dir, args.project)
     
     # Initialize Adapters with Config values
+    llm_provider = config_manager.get('models.translation.primary.provider', 'local')
     llm_model = config_manager.get('models.translation.primary.model', 'qwen2.5:7b')
-    llm_adapter = LocalLLMAdapter(model_name=llm_model)
+    
+    if llm_provider in ['local', 'ollama']:
+        llm_adapter = LocalLLMAdapter(model_name=llm_model)
+    else:
+        from models.llm_adapter import OnlineLLMAdapter
+        llm_adapter = OnlineLLMAdapter(provider=llm_provider, model_name=llm_model)
     
     if args.stage in ['all', 'translate']:
         logger.info("Running Translation Engine...")

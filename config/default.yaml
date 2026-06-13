@@ -12,8 +12,8 @@ project:
 models:
   translation:
     primary:
-      provider: "ollama"
-      model: "qwen2.5:7b" # Or llama3.1
+      provider: "local" # options: local, groq, openai
+      model: "qwen2.5:7b" # for groq use 'llama-3.3-70b-versatile'
     backup:
       provider: "ollama"
       model: "gemma2"
