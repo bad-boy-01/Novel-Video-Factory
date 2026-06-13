@@ -87,6 +87,11 @@ def main():
             chunks = text_chunker.chunk_text(text, max_words=500)
             
             for chunk_idx, chunk_data in enumerate(chunks):
+                chunk_marker = os.path.join(pm.project_dir, 'memory', f"chunk_{file}_{chunk_idx}.done")
+                if os.path.exists(chunk_marker):
+                    logger.info(f"Skipping Memory Extraction for Chunk {chunk_idx + 1}/{len(chunks)} (Already Extracted)")
+                    continue
+                    
                 chunk_text = " ".join([s["text"] for s in chunk_data["sentences"]])
                 logger.info(f"Extracting Memory from Chunk {chunk_idx + 1}/{len(chunks)}")
                 
@@ -108,6 +113,10 @@ def main():
                 for concept in memory_data.get("world_concepts", []):
                     if memory_db.add_world_concept(concept.get('concept_type', 'misc'), concept.get('name', 'Unknown'), concept.get('description', '')):
                         logger.info(f"Saved world concept to DB: {concept.get('name')}")
+                    
+                # Mark chunk as complete
+                with open(chunk_marker, 'w') as f:
+                    f.write("done")
                     
                 # World Style extraction (only needed once per chapter/file)
                 if chunk_idx == 0:
@@ -170,20 +179,35 @@ def main():
             chunks = text_chunker.chunk_text(text, max_words=500)
             
             for chunk_idx, chunk_data in enumerate(chunks):
+                visual_marker = os.path.join(pm.dirs['output'], f"visual_{file}_{chunk_idx}.json")
+                if os.path.exists(visual_marker):
+                    logger.info(f"Skipping Visual Planning for Chunk {chunk_idx + 1}/{len(chunks)} (Already Planned)")
+                    import json
+                    with open(visual_marker, 'r', encoding='utf-8') as f:
+                        chunk_prompts = json.load(f)
+                    all_prompts.extend(chunk_prompts)
+                    continue
+
                 chunk_text = " ".join([s["text"] for s in chunk_data["sentences"]])
                 logger.info(f"Visual Planning for Chunk {chunk_idx + 1}/{len(chunks)} ({chunk_data['word_count']} words)")
                 
                 scenes = planner.plan_scenes(chunk_text)
                 
+                chunk_prompts = []
                 for scene in scenes:
                     prompt_data = prompter.generate_prompt_for_scene(scene)
+                    chunk_prompts.append(prompt_data)
                     all_prompts.append(prompt_data)
                     logger.info(f"Generated prompt for {scene.get('scene_id')}: {prompt_data['prompt']}")
                 
-        # Save prompts
+                import json
+                with open(visual_marker, 'w', encoding='utf-8') as f:
+                    json.dump(chunk_prompts, f, indent=2)
+                
+        # Save aggregated prompts
         import json
         pm.save_output("prompts.json", json.dumps(all_prompts, indent=2))
-        logger.info("Saved all visual prompts to prompts.json")
+        logger.info("Saved all aggregated visual prompts to prompts.json")
 
     if args.stage in ['all', 'generation']:
         logger.info("Running Image Generation...")
