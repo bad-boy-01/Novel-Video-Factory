@@ -13,3 +13,7 @@ pytest
 python-dotenv
 compel
 requests
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+decorator>=5.1.0
