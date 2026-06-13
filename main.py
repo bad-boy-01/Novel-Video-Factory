@@ -108,7 +108,8 @@ def main():
                 
                 # Batch extract all memory to save LLM API rate limits
                 existing_chars = memory_db.get_all_characters()
-                memory_data = extractor.extract_all(chunk_text, existing_characters=existing_chars)
+                existing_rels = memory_db.get_all_relationships()
+                memory_data = extractor.extract_all(chunk_text, existing_characters=existing_chars, existing_relationships=existing_rels)
                 
                 # Characters
                 for c in memory_data.get("characters", []):

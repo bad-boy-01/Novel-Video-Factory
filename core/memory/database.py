@@ -186,6 +186,23 @@ class MemoryEngine:
     def add_relationship(self, name1: str, name2: str, rel_type: str, staging: str = "") -> bool:
         session = self.Session()
         try:
+            # V3 Upgrade: Relationship Hierarchy
+            # Higher number = higher priority. We don't overwrite high priority with low.
+            PRIORITY = {
+                'family': 100, 'spouse': 100, 'husband': 100, 'wife': 100,
+                'brother': 90, 'sister': 90, 'parent': 90, 'child': 90, 'father': 90, 'mother': 90,
+                'master-disciple': 80, 'teacher': 80, 'student': 80,
+                'enemy': 70, 'rival': 70,
+                'friend': 50, 'ally': 50,
+                'neutral': 10, 'acquaintance': 10, 'unknown': 0
+            }
+            
+            def get_priority(t):
+                t = t.lower()
+                for key, val in PRIORITY.items():
+                    if key in t: return val
+                return 5 # Default for unknown types
+            
             # Resolve IDs
             c1 = session.query(Character).filter(Character.canonical_name == name1).first()
             c2 = session.query(Character).filter(Character.canonical_name == name2).first()
@@ -198,14 +215,42 @@ class MemoryEngine:
                 ((Relationship.char1_id == c2.id) & (Relationship.char2_id == c1.id))
             ).first()
             
+            new_priority = get_priority(rel_type)
+            
             if existing:
-                existing.relationship_type = rel_type
-                existing.staging_metadata = {"staging": staging}
+                old_priority = get_priority(existing.relationship_type)
+                if new_priority >= old_priority:
+                    existing.relationship_type = rel_type
+                    if staging:
+                        existing.staging_metadata = {"staging": staging}
+                else:
+                    logger.debug(f"Ignoring lower priority relationship update: {rel_type} vs {existing.relationship_type}")
+                    return False
             else:
                 rel = Relationship(char1_id=c1.id, char2_id=c2.id, relationship_type=rel_type, staging_metadata={"staging": staging})
                 session.add(rel)
+            
             session.commit()
             return True
+        finally:
+            session.close()
+
+    def get_all_relationships(self) -> List[dict]:
+        """Fetch all relationships with character names for LLM context."""
+        session = self.Session()
+        try:
+            rels = session.query(Relationship).all()
+            results = []
+            for r in rels:
+                c1 = session.query(Character).filter_by(id=r.char1_id).first()
+                c2 = session.query(Character).filter_by(id=r.char2_id).first()
+                if c1 and c2:
+                    results.append({
+                        "char1": c1.canonical_name,
+                        "char2": c2.canonical_name,
+                        "type": r.relationship_type
+                    })
+            return results
         finally:
             session.close()
 

@@ -12,21 +12,24 @@ class MemoryExtractor:
     def __init__(self, llm_adapter):
         self.llm = llm_adapter
 
-    def extract_all(self, text_chunk: str, existing_characters: List[Dict] = None) -> Dict[str, List[Dict]]:
+    def extract_all(self, text_chunk: str, existing_characters: List[Dict] = None, existing_relationships: List[Dict] = None) -> Dict[str, List[Dict]]:
         """
-        Extracts characters, locations, and world concepts in a single LLM call to save API rate limits.
-        Utilizes existing_characters to prevent duplicates.
+        Extracts characters, locations, world concepts, and relationships in a single LLM call.
+        Utilizes existing entities to maintain global consistency.
         """
         existing_char_list = ", ".join([c['canonical_name'] for c in existing_characters]) if existing_characters else "None"
+        existing_rel_list = ", ".join([f"{r['char1']} & {r['char2']} ({r['type']})" for r in existing_relationships]) if existing_relationships else "None"
         
         system_prompt = (
             "You are an expert lore master and character designer. Read the story text and extract ALL characters, locations, world concepts, and character relationships.\n"
             "Return the data STRICTLY as a JSON object with keys: 'characters', 'locations', 'world_concepts', 'relationships'.\n\n"
-            "EXISTING CHARACTERS (Reuse these names exactly if they appear): " + existing_char_list + "\n\n"
+            "EXISTING CHARACTERS: " + existing_char_list + "\n"
+            "EXISTING RELATIONSHIPS (Keep these consistent): " + existing_rel_list + "\n\n"
             "CRITICAL RULES FOR RELATIONSHIPS:\n"
             "1. Identify connections between characters (e.g., 'A is B's master', 'A and B are enemies').\n"
-            "2. relationship_type should be one of: 'master-disciple', 'enemy', 'romantic', 'family', 'friend', 'neutral'.\n"
-            "3. Include 'staging' notes (e.g., 'protective', 'distant', 'aggressive').\n\n"
+            "2. relationship_type should be one of: 'family', 'brother', 'sister', 'master-disciple', 'enemy', 'friend', 'neutral'.\n"
+            "3. DO NOT downgrade established relationships (e.g., if A and B are brothers, don't label them as just 'friends' in a later scene).\n"
+            "4. Include 'staging' notes (e.g., 'protective', 'distant', 'aggressive').\n\n"
             "EXAMPLE OUTPUT FORMAT:\n"
             "{\n"
             "  \"characters\": [...],\n"
