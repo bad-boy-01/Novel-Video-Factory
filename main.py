@@ -214,17 +214,27 @@ def main():
                         # Extract age if possible or just use the DNA string
                         pass 
                     
-                    # Move style tags to the front to avoid 77-token truncation
+                    # Moving style tags to the front to avoid 77-token truncation
                     quality_tags = "masterpiece, high score, great score, absurdres"
                     manhwa_core = "manhwa, webtoon, korean style, thick outlines, vibrant colors"
                     year_tag = "year 2024"
                     
-                    # Truncate DNA string if it's too long
-                    dna_short = dna_str[:120] if len(dna_str) > 120 else dna_str
+                    # Generate a unique but deterministic seed for this character
+                    import hashlib
+                    char_seed = int(hashlib.sha256(char.canonical_name.encode('utf-8')).hexdigest(), 16) % 2147483647
                     
-                    prompt = f"{gender_tag}, solo, {dna_short}, {manhwa_core}, traditional eastern clothing, cinematic portrait, {year_tag}, {quality_tags}, rating_safe"
+                    # Prioritize unique features at the FRONT of the prompt
+                    prompt = f"{gender_tag}, solo, {dna_str}, {manhwa_core}, traditional eastern clothing, cinematic portrait, {year_tag}, {quality_tags}, rating_safe"
                     negative = "lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
-                    image_adapter.generate_image(prompt, img_path, negative_prompt=negative)
+                    
+                    char_params = {
+                        "seed": char_seed,
+                        "steps": 30,
+                        "cfg": 6.0,
+                        "width": 1024,
+                        "height": 1024
+                    }
+                    image_adapter.generate_image(prompt, img_path, negative_prompt=negative, generation_params=char_params)
                 else:
                     logger.info(f"Reference Sheet already exists for {char.canonical_name}, skipping.")
         finally:
