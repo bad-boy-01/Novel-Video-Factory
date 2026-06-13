@@ -12,6 +12,15 @@ class ProjectManager:
         self.project_name = project_name
         self.project_dir = os.path.join(self.base_dir, 'projects', self.project_name)
         
+        # Project Locking (Phase 0)
+        self.lock_file = os.path.join(self.project_dir, '.lock')
+        if os.path.exists(self.lock_file):
+            raise RuntimeError(f"Project '{self.project_name}' is locked. Another process may be running. Delete the .lock file manually if this is a mistake.")
+        
+        os.makedirs(self.project_dir, exist_ok=True)
+        with open(self.lock_file, 'w') as f:
+            f.write("locked")
+            
         # Define standard directories
         self.dirs = {
             'input': os.path.join(self.project_dir, 'input'),
@@ -24,6 +33,20 @@ class ProjectManager:
     def _ensure_directories(self):
         for dir_path in self.dirs.values():
             os.makedirs(dir_path, exist_ok=True)
+
+    def unlock(self):
+        """Release the project lock."""
+        if os.path.exists(self.lock_file):
+            os.remove(self.lock_file)
+
+    def get_versioned_dir(self, base_category: str, version: int = 1) -> str:
+        """
+        Returns a versioned directory path, e.g., projects/<name>/output/storyboard/v1
+        base_category could be 'storyboard', 'prompts', etc.
+        """
+        path = os.path.join(self.dirs['output'], base_category, f"v{version}")
+        os.makedirs(path, exist_ok=True)
+        return path
 
     def get_input_files(self):
         """Return a list of .txt files in the input directory."""
