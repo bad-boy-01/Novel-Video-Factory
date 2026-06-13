@@ -43,7 +43,7 @@ video:
   output_format: "mp4"
 
 prompts:
-  style_modifier: "high-quality, cinematic, 'Korean Manhwa' style, detailed lighting, masterpiece"
+  style_modifier: "webtoon, korean comic, manhwa, flat colors, high-quality, cinematic, detailed lighting, masterpiece"
   negative_prompt: "ugly, blurry, low res, extra limbs, bad anatomy"
 
 system:

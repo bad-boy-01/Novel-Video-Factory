@@ -151,7 +151,15 @@ def main():
                             dna_tags.append(v)
                     dna_str = ", ".join(dna_tags)
                     
-                    prompt = f"1boy/1girl, {dna_str}, cinematic portrait, detailed background, looking at viewer, masterpiece, {style_modifier}"
+                    # Deduce gender for the model
+                    dna_lower = dna_str.lower()
+                    name_lower = char.canonical_name.lower()
+                    if any(w in dna_lower or w in name_lower for w in ["girl", "woman", "female", "sister", "mother", "wife", "chunni", "xiue", "mei", "her ", "she "]):
+                        gender_tag = "1girl"
+                    else:
+                        gender_tag = "1boy" # Defaults to boy for wuxia/manhwa protagonists unless female keywords found
+                    
+                    prompt = f"{gender_tag}, {dna_str}, cinematic portrait, detailed background, looking at viewer, masterpiece, {style_modifier}"
                     negative = config_manager.get('prompts.negative_prompt', 'ugly, bad anatomy')
                     image_adapter.generate_image(prompt, img_path, negative_prompt=negative)
                 else:
