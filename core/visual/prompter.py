@@ -77,13 +77,17 @@ class PromptGenerator:
         
         character_prompt = ", ".join(dna_descriptions)
         
-        # Put base_style at the end so if CLIP truncates >77 tokens, it only loses generic style tags, not critical lighting/character data
-        full_prompt = f"{camera}. {action_desc}. {lighting}. {character_prompt}. {self.base_style}."
+        # Quality and Style Tags for Animagine XL 4.0
+        quality_tags = "masterpiece, high score, great score, absurdres"
+        wuxia_style = "manhwa style, webtoon style, sharp lineart, vibrant colors, dramatic lighting, long hair, traditional chinese clothing"
+        
+        # Put quality_tags first for better prompt adherence
+        full_prompt = f"{quality_tags}. {camera}. {action_desc}. {lighting}. {character_prompt}. {wuxia_style}, {self.base_style}."
         
         return {
             "scene_id": scene.get("scene_id"),
             "prompt": full_prompt,
-            "negative_prompt": "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
+            "negative_prompt": "lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry",
             "metadata": scene,
             "reference_images": ref_images
         }

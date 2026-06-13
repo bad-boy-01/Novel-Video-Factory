@@ -25,7 +25,7 @@ models:
     model: "qwen2.5:7b"
   image_generation:
     provider: "diffusers" # diffusers or comfyui
-    model: "cagliostrolab/animagine-xl-3.1" # Open anime SDXL model
+    model: "cagliostrolab/animagine-xl-4.0" # Latest high-quality anime SDXL model
   audio:
     provider: "coqui"
     model: "tts_models/en/vctk/vits"
