@@ -90,22 +90,22 @@ def main():
                 chunk_text = " ".join([s["text"] for s in chunk_data["sentences"]])
                 logger.info(f"Extracting Memory from Chunk {chunk_idx + 1}/{len(chunks)}")
                 
-                # Character extraction
-                chars = extractor.extract_characters(chunk_text)
-                for c in chars:
+                # Batch extract all memory to save LLM API rate limits
+                memory_data = extractor.extract_all(chunk_text)
+                
+                # Characters
+                for c in memory_data.get("characters", []):
                     c_id = str(uuid.uuid4())[:8]
                     if memory_db.add_character(c_id, c.get('canonical_name', 'Unknown'), c.get('visual_dna', {})):
                         logger.info(f"Saved character to DB: {c.get('canonical_name')}")
                     
-                # Location extraction
-                locs = extractor.extract_locations(chunk_text)
-                for loc in locs:
+                # Locations
+                for loc in memory_data.get("locations", []):
                     if memory_db.add_location(loc.get('canonical_name', 'Unknown'), loc.get('description', '')):
                         logger.info(f"Saved location to DB: {loc.get('canonical_name')}")
                     
-                # World Concept extraction
-                concepts = extractor.extract_world_concepts(chunk_text)
-                for concept in concepts:
+                # World Concepts
+                for concept in memory_data.get("world_concepts", []):
                     if memory_db.add_world_concept(concept.get('concept_type', 'misc'), concept.get('name', 'Unknown'), concept.get('description', '')):
                         logger.info(f"Saved world concept to DB: {concept.get('name')}")
                     

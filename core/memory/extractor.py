@@ -12,74 +12,46 @@ class MemoryExtractor:
     def __init__(self, llm_adapter):
         self.llm = llm_adapter
 
-    def extract_characters(self, text_chunk: str) -> List[Dict]:
+    def extract_all(self, text_chunk: str) -> Dict[str, List[Dict]]:
         """
-        Uses the LLM to identify characters and extract their visual DNA.
+        Extracts characters, locations, and world concepts in a single LLM call to save API rate limits.
         """
         system_prompt = (
-            "You are an expert lore master. Read the following story text and extract all characters mentioned. "
-            "For each character, extract their canonical name, any aliases, and their 'Visual DNA'.\n"
-            "CRITICAL RULES:\n"
+            "You are an expert lore master. Read the following story text and extract ALL characters, locations, and world concepts mentioned.\n"
+            "Return the data STRICTLY as a valid JSON object with three keys: 'characters', 'locations', and 'world_concepts'.\n\n"
+            "CRITICAL RULES FOR CHARACTERS:\n"
             "1. You MUST include specific Danbooru-style tags for 'age', 'body_type', 'face_info', 'hair', 'eyes', and 'clothing'. DO NOT use full sentences.\n"
-            "2. DO NOT write 'not specified' or 'unknown'. If a visual attribute is missing from the text, you MUST invent a highly plausible, consistent anime/manhwa design (e.g., 'muscular body', 'sharp jaw', '20s') and stick to it so the character has a concrete visual identity!\n"
-            "Return the data STRICTLY as a valid JSON array of objects. Example: "
-            "[{\"canonical_name\": \"John Doe\", \"aliases\": [\"Johnny\"], \"visual_dna\": {\"age\": \"20s\", \"body_type\": \"muscular\", \"face_info\": \"sharp jaw, scar on cheek\", \"hair\": \"black hair\", \"eyes\": \"blue eyes\", \"clothing\": \"red robe, loose clothing\"}}]"
+            "2. If a visual attribute is missing, you MUST invent a highly plausible, consistent anime/manhwa design and stick to it!\n\n"
+            "EXAMPLE OUTPUT FORMAT:\n"
+            "{\n"
+            "  \"characters\": [{\"canonical_name\": \"John Doe\", \"aliases\": [\"Johnny\"], \"visual_dna\": {\"age\": \"20s\", \"body_type\": \"muscular\", \"face_info\": \"sharp jaw, scar on cheek\", \"hair\": \"black hair\", \"eyes\": \"blue eyes\", \"clothing\": \"red robe\"}}],\n"
+            "  \"locations\": [{\"canonical_name\": \"Cloud Peak\", \"description\": \"A high mountain shrouded in mist.\"}],\n"
+            "  \"world_concepts\": [{\"concept_type\": \"sect\", \"name\": \"Heavenly Sword Sect\", \"description\": \"A powerful sect\"}]\n"
+            "}"
         )
         
         response = self.llm.generate(text_chunk, system_prompt=system_prompt, temperature=0.1)
         
         try:
-            # Basic cleanup if the LLM adds markdown formatting
             response = response.strip()
             if response.startswith("```json"):
                 response = response[7:]
             if response.endswith("```"):
                 response = response[:-3]
                 
-            # Strip trailing commas before list/dict closures
             response = re.sub(r',\s*([\]}])', r'\1', response)
                 
             data = json.loads(response)
-            if isinstance(data, list):
-                return data
-            else:
-                logger.error("LLM did not return a JSON array.")
-                return []
+            if isinstance(data, dict):
+                return {
+                    "characters": data.get("characters", []),
+                    "locations": data.get("locations", []),
+                    "world_concepts": data.get("world_concepts", [])
+                }
+            return {"characters": [], "locations": [], "world_concepts": []}
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM character extraction response: {e}\nResponse: {response}")
-            return []
-
-    def extract_locations(self, text_chunk: str) -> List[Dict]:
-        system_prompt = (
-            "You are an expert lore master. Extract all locations and settings mentioned. "
-            "Return STRICTLY as a valid JSON array of objects. Example: "
-            "[{\"canonical_name\": \"Cloud Peak\", \"description\": \"A high mountain shrouded in mist.\"}]"
-        )
-        response = self.llm.generate(text_chunk, system_prompt=system_prompt, temperature=0.1)
-        try:
-            response = response.strip()
-            if response.startswith("```json"): response = response[7:]
-            if response.endswith("```"): response = response[:-3]
-            data = json.loads(response)
-            return data if isinstance(data, list) else []
-        except json.JSONDecodeError:
-            return []
-
-    def extract_world_concepts(self, text_chunk: str) -> List[Dict]:
-        system_prompt = (
-            "You are an expert lore master. Extract all world concepts (currencies, sects, magic skills) mentioned. "
-            "Return STRICTLY as a valid JSON array of objects. Example: "
-            "[{\"concept_type\": \"sect\", \"name\": \"Heavenly Sword Sect\", \"description\": \"A powerful sect\"}]"
-        )
-        response = self.llm.generate(text_chunk, system_prompt=system_prompt, temperature=0.1)
-        try:
-            response = response.strip()
-            if response.startswith("```json"): response = response[7:]
-            if response.endswith("```"): response = response[:-3]
-            data = json.loads(response)
-            return data if isinstance(data, list) else []
-        except json.JSONDecodeError:
-            return []
+            logger.error(f"Failed to parse LLM combined extraction response: {e}\nResponse: {response}")
+            return {"characters": [], "locations": [], "world_concepts": []}
 
     def extract_world_style(self, text_chunk: str) -> str:
         """
