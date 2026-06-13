@@ -90,20 +90,26 @@ class PromptGenerator:
         camera = shot.get('camera', 'medium shot')
         lighting = scene.get('lighting', 'cinematic lighting')
         
+        # Character Description (The Subject)
         character_prompt = ", ".join(dna_descriptions)
         
-        # Cinematic V5 Styles: Professional High-Contrast Manhwa
-        quality_tags = "masterpiece, best quality, official art, high resolution"
-        # The 'magic' sequence for that clean webtoon look:
-        manhwa_core = "manhwa, webtoon style, digital media, official art, sharp lineart, uniform lines, flat color, cel shading, high contrast, vibrant colors"
-        cinematic_tags = "cinematic lighting, bloom, backlighting, atmospheric"
-        year_tag = "year 2024"
+        # Art Style Definition (Modern Digital Webtoon)
+        # Using specific tags from 'The Otherworldly Nutritionist' analysis
+        art_style = "manhwa style, webtoon style, digital media, clean lineart, flat color, cel shading, high contrast, vibrant colors, official art"
         
-        # Build Structured Prompt: [Art Style] -> [Subject] -> [Action] -> [Context] -> [Quality]
-        full_prompt = f"{manhwa_core}, {character_prompt}, {staging_tags}, {action_tags}, {world_tags}{location_tags}{camera}, {lighting}, {cinematic_tags}, {year_tag}, {quality_tags}, rating_safe"
+        # Cinematic Effects (The Lighting/Atmosphere)
+        cinematic = f"{lighting}, bloom, backlighting, atmospheric, {camera}"
         
-        # Aggressive Painterly/Watercolor Exclusion
-        negative_prompt = "watercolor, oil painting, traditional media, sketch, pencil, graphite, charcoal, canvas, textured paper, brush strokes, painterly, blurry, lowres, bad anatomy, bad hands, text, error, worst quality, low quality, signature, watermark, username"
+        # Quality Enhancement (Official 4.0 sequence)
+        quality = "masterpiece, high score, great score, absurdres"
+        year_tag = "year 2024" # Or 2025 for extremely modern look
+        
+        # Build the final prompt in the OFFICIAL model sequence:
+        # [Subject] -> [Rating] -> [Content] -> [Art Style] -> [Quality]
+        full_prompt = f"{character_prompt}, rating_safe, {action_tags}, {world_tags}{location_tags}{cinematic}, {staging_tags}, {art_style}, {year_tag}, {quality}"
+        
+        # Aggressive Negative Prompt to strip away 'Painterly/Watercolor' look
+        negative_prompt = "watercolor, oil painting, traditional media, painterly, brush strokes, textured paper, canvas, sketch, pencil, charcoal, blurry, lowres, bad anatomy, bad hands, text, error, worst quality, low quality, signature, watermark, username"
         
         # Deterministic Seed
         import random, hashlib

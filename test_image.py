@@ -14,9 +14,14 @@ def test_gen():
         adapter = LocalImageAdapter()
         print("Adapter initialized.")
         
-        # Style Calibration Prompt: Testing the new Professional Manhwa V5 settings
-        prompt = "manhwa, webtoon style, digital media, official art, sharp lineart, uniform lines, flat color, cel shading, high contrast, vibrant colors, 1boy, solo, short black hair, piercing eyes, ancient eastern royal robes, cinematic lighting, bloom, year 2024, masterpiece, best quality, official art, rating_safe"
-        negative = "watercolor, oil painting, traditional media, sketch, pencil, graphite, charcoal, canvas, textured paper, brush strokes, painterly, blurry, lowres, bad anatomy, bad hands, text, error"
+        # Style Calibration V5 (Official 4.0 Sequence)
+        # 1. Subject: 1boy, character traits
+        # 2. Rating: rating_safe
+        # 3. Content: scene, clothing, lighting, camera
+        # 4. Art Style: manhwa/webtoon tags
+        # 5. Quality: official 4.0 quality tags
+        prompt = "1boy, solo, short black hair, piercing eyes, rating_safe, ancient eastern royal robes, cinematic lighting, bloom, backlighting, close up, manhwa style, webtoon style, digital media, official art, sharp lineart, flat color, cel shading, high contrast, vibrant colors, year 2024, masterpiece, high score, great score, absurdres"
+        negative = "watercolor, oil painting, traditional media, painterly, brush strokes, textured paper, canvas, sketch, pencil, charcoal, blurry, lowres, bad anatomy, bad hands, text, error"
         
         params = {
             "seed": 12345,
@@ -26,7 +31,7 @@ def test_gen():
             "height": 1024
         }
         
-        print(f"Generating calibration image...")
+        print(f"Generating calibration image (Official 4.0 Structure)...")
         adapter.generate_image(prompt, "style_calibration.png", negative_prompt=negative, generation_params=params)
         print("Style calibration image saved to style_calibration.png.")
     except Exception as e:

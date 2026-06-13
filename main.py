@@ -160,18 +160,18 @@ def main():
                     
                     loc_seed = int(hashlib.sha256(name.encode('utf-8')).hexdigest(), 16) % 2147483647
                     
-                    # Cinematic V5: Professional Manhwa Background
-                    manhwa_core = "manhwa, webtoon style, digital media, official art, sharp lineart, uniform lines, flat color, cel shading, high contrast, vibrant colors"
-                    quality_tags = "masterpiece, best quality, official art, high resolution"
+                    # Cinematic V5: Official 4.0 Manhwa Background
+                    art_style = "manhwa style, webtoon style, digital media, official art, sharp lineart, flat color, cel shading, high contrast, vibrant colors"
+                    quality = "masterpiece, high score, great score, absurdres"
                     
-                    # Prioritize Art Style and Location
-                    bg_prompt = f"{manhwa_core}, {desc}, landscape, detailed background, cinematic lighting, bloom, year 2024, {quality_tags}, rating_safe"
-                    negative = "watercolor, oil painting, traditional media, sketch, pencil, canvas, textured paper, brush strokes, painterly, blurry, lowres, worst quality, low quality"
+                    # Official Sequence: [Subject] -> [Rating] -> [Content] -> [Art Style] -> [Quality]
+                    bg_prompt = f"scenery, landscape, {desc}, rating_safe, detailed background, cinematic lighting, bloom, {art_style}, year 2024, {quality}"
+                    negative = "watercolor, oil painting, traditional media, painterly, brush strokes, textured paper, canvas, sketch, pencil, charcoal, blurry, lowres"
                     
                     bg_params = {
                         "seed": loc_seed,
                         "steps": 30,
-                        "cfg": 7.0, # Increased for sharper style adherence
+                        "cfg": 7.0,
                         "width": 1280,
                         "height": 720
                     }
@@ -232,22 +232,21 @@ def main():
                         # Extract age if possible or just use the DNA string
                         pass 
                     
-                    # Cinematic V5: Professional Manhwa Character Sheet
-                    quality_tags = "masterpiece, best quality, official art, high resolution"
-                    manhwa_core = "manhwa, webtoon style, digital media, official art, sharp lineart, uniform lines, flat color, cel shading, high contrast, vibrant colors"
-                    year_tag = "year 2024"
+                    # Cinematic V5: Official 4.0 Manhwa Character Sheet
+                    art_style = "manhwa style, webtoon style, digital media, official art, sharp lineart, flat color, cel shading, high contrast, vibrant colors"
+                    quality = "masterpiece, high score, great score, absurdres"
                     
                     # Generate a unique but deterministic seed for this character
                     char_seed = int(hashlib.sha256(char.canonical_name.encode('utf-8')).hexdigest(), 16) % 2147483647
                     
-                    # Prioritize Art Style and DNA
-                    prompt = f"{manhwa_core}, {gender_tag}, solo, {dna_str}, traditional eastern clothing, cinematic portrait, {year_tag}, {quality_tags}, rating_safe"
-                    negative = "watercolor, oil painting, traditional media, sketch, pencil, canvas, textured paper, brush strokes, painterly, blurry, lowres, bad anatomy, bad hands, text, error"
+                    # Official Sequence: [Subject] -> [Rating] -> [Content] -> [Art Style] -> [Quality]
+                    prompt = f"{gender_tag}, solo, {dna_str}, rating_safe, traditional eastern clothing, cinematic portrait, {art_style}, year 2024, {quality}"
+                    negative = "watercolor, oil painting, traditional media, painterly, brush strokes, textured paper, canvas, sketch, pencil, charcoal, blurry, lowres, bad anatomy, bad hands, text"
                     
                     char_params = {
                         "seed": char_seed,
                         "steps": 30,
-                        "cfg": 7.0, # Increased for sharper style adherence
+                        "cfg": 7.0,
                         "width": 1024,
                         "height": 1024
                     }
