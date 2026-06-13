@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import atexit
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,9 @@ class ProjectManager:
         os.makedirs(self.project_dir, exist_ok=True)
         with open(self.lock_file, 'w') as f:
             f.write("locked")
+            
+        # Ensure lock is cleaned up if script crashes
+        atexit.register(self.unlock)
             
         # Define standard directories
         self.dirs = {
