@@ -72,6 +72,17 @@ class OnlineLLMAdapter:
         self.model_name = model_name
         self.api_key = api_key or os.environ.get(f"{self.provider.upper()}_API_KEY")
         
+        # Kaggle Secrets Fallback
+        if not self.api_key:
+            try:
+                from kaggle_secrets import UserSecretsClient
+                user_secrets = UserSecretsClient()
+                self.api_key = user_secrets.get_secret(f"{self.provider.upper()}_API_KEY")
+            except ImportError:
+                pass
+            except Exception as e:
+                logger.warning(f"Failed to read from Kaggle Secrets: {e}")
+        
         if self.provider == "groq":
             self.api_url = "https://api.groq.com/openai/v1/chat/completions"
         elif self.provider == "openai":
