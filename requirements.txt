@@ -12,3 +12,4 @@ pyyaml
 pytest
 python-dotenv
 compel
+requests
