@@ -26,14 +26,8 @@ class LocalImageAdapter:
             self.pipeline = AutoPipelineForText2Image.from_pretrained(
                 self.model_name, torch_dtype=torch.float16
             )
-            # IP Adapter support for SDXL
-            try:
-                self.pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="sdxl_models", weight_name="ip-adapter_sdxl.bin")
-                self.pipeline.set_ip_adapter_scale(0.35)
-                logger.info("IP-Adapter loaded successfully for Character Reference injection.")
-            except Exception as e:
-                logger.warning(f"Could not load IP-Adapter. Falling back to text-only generation. {e}")
-                
+            # We will load IP-Adapter dynamically when needed
+            self.ip_adapter_loaded = False
             try:
                 self.pipeline.enable_xformers_memory_efficient_attention()
                 logger.info("xformers enabled for faster generation.")
@@ -69,10 +63,20 @@ class LocalImageAdapter:
                     from PIL import Image
                     ref_images = [Image.open(p).convert("RGB") for p in reference_image_paths if os.path.exists(p)]
                     if ref_images:
+                        if not self.ip_adapter_loaded:
+                            logger.info("Loading IP-Adapter into pipeline...")
+                            self.pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="sdxl_models", weight_name="ip-adapter_sdxl.bin")
+                            self.ip_adapter_loaded = True
+                        self.pipeline.set_ip_adapter_scale(0.35)
                         kwargs["ip_adapter_image"] = ref_images
                         logger.info(f"Injecting {len(ref_images)} character reference images via IP-Adapter.")
                 except Exception as e:
                     logger.warning(f"Failed to load reference images: {e}")
+            else:
+                if self.ip_adapter_loaded:
+                    logger.info("Unloading IP-Adapter for pure text generation...")
+                    self.pipeline.unload_ip_adapter()
+                    self.ip_adapter_loaded = False
             
             image = self.pipeline(**kwargs).images[0]
             image.save(output_path)
