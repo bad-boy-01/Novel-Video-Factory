@@ -19,7 +19,7 @@ def main():
     parser = argparse.ArgumentParser(description="Novel Video Factory - Automated AI Novel to Video Pipeline")
     parser.add_argument('project', help="Name of the project/novel")
     parser.add_argument('--stage', type=str, default='all', 
-                        choices=['all', 'translate', 'memory', 'visual', 'generation', 'audio', 'video', 'publishing', 'export'],
+                        choices=['all', 'translate', 'memory', 'character_sheets', 'visual', 'generation', 'audio', 'video', 'publishing', 'export'],
                         help='Which stage of the pipeline to run')
     parser.add_argument('--config', default='config/default.yaml', help="Path to configuration file")
 
@@ -133,7 +133,7 @@ def main():
         from models.image_adapter import LocalImageAdapter
         image_adapter = LocalImageAdapter()
         
-        chars_dir = os.path.join(pm.project_dir, 'memory', 'characters')
+        chars_dir = os.path.join(pm.project_dir, 'memory', 'character_sheets')
         os.makedirs(chars_dir, exist_ok=True)
         
         style_modifier = config_manager.get('prompts.style_modifier', 'Cinematic, high quality')
@@ -142,10 +142,8 @@ def main():
             from core.memory.database import Character
             characters = session.query(Character).all()
             for char in characters:
-                # Sanitize name for filename
-                import re
-                safe_name = re.sub(r'[^a-zA-Z0-9_\- ]', '', char.canonical_name).strip().replace(' ', '_')
-                img_path = os.path.join(chars_dir, f"{safe_name}.png")
+                # Use character ID for filename to match what prompter.py expects
+                img_path = os.path.join(chars_dir, f"{char.id}.png")
                 
                 if not os.path.exists(img_path):
                     logger.info(f"Generating Character Reference Sheet for {char.canonical_name}...")

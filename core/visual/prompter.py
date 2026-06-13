@@ -41,14 +41,23 @@ class PromptGenerator:
                 dna = char_data.get("visual_dna", {})
                 # Format DNA into a string
                 dna_str = ", ".join([f"{v}" if not isinstance(v, dict) else "" for k, v in dna.items()]).strip()
-                if dna_str:
-                    dna_descriptions.append(f"({char_name}: {dna_str})")
+                
+                # Deduce gender for Danbooru-based models
+                dna_lower = dna_str.lower()
+                name_lower = char_name.lower()
+                if any(w in dna_lower or w in name_lower for w in ["girl", "woman", "female", "sister", "mother", "wife", "chunni", "xiue", "mei", "her ", "she ", "madam", "dress", "aunt", "lady"]):
+                    gender_tag = "1girl"
                 else:
-                    dna_descriptions.append(char_name)
+                    gender_tag = "1boy"
+                
+                if dna_str:
+                    dna_descriptions.append(f"{gender_tag}, {char_name}, {dna_str}")
+                else:
+                    dna_descriptions.append(f"{gender_tag}, {char_name}")
                     
                 # Look for reference image
                 if project_dir and len(characters_present) == 1:
-                    img_path = os.path.join(project_dir, 'memory', 'characters', f"{char_data.get('id')}.png")
+                    img_path = os.path.join(project_dir, 'memory', 'character_sheets', f"{char_data.get('id')}.png")
                     if os.path.exists(img_path):
                         ref_images.append(img_path)
             else:
