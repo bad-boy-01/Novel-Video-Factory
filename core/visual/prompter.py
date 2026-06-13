@@ -94,12 +94,12 @@ class PromptGenerator:
         
         # Styles
         quality_tags = "masterpiece, high score, great score, absurdres"
-        manhwa_core = "manhwa, webtoon, korean style, thick outlines, vibrant colors"
-        cinematic_tags = "cinematic lighting, atmospheric, moody, soft focus, high resolution"
+        manhwa_core = "manhwa, webtoon, korean style, sharp lineart, digital media, flat color, cel shading, thick outlines, vibrant colors"
+        cinematic_tags = "cinematic lighting, atmospheric, moody, high resolution"
         year_tag = "year 2024"
         
         full_prompt = f"{character_prompt}, {staging_tags}, {action_tags}, {world_tags}{location_tags}{camera}, {manhwa_core}, {lighting}, {cinematic_tags}, {year_tag}, {quality_tags}, rating_safe"
-        negative_prompt = "lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
+        negative_prompt = "watercolor, oil painting, traditional media, lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
         
         # Deterministic Seed
         import random, hashlib

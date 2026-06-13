@@ -161,11 +161,12 @@ def main():
                     # V3 Upgrade: Unique Seed for Location
                     loc_seed = int(hashlib.sha256(name.encode('utf-8')).hexdigest(), 16) % 2147483647
                     
-                    manhwa_core = "manhwa, webtoon, korean style, thick outlines, vibrant colors"
+                    manhwa_core = "manhwa, webtoon, korean style, sharp lineart, digital media, flat color, cel shading, thick outlines, vibrant colors"
                     quality_tags = "masterpiece, high score, great score, absurdres"
                     
                     # Prioritize location description at the FRONT
                     bg_prompt = f"{desc}, {manhwa_core}, landscape, detailed background, cinematic lighting, year 2024, {quality_tags}, rating_safe"
+                    negative = "watercolor, oil painting, traditional media, lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
                     
                     bg_params = {
                         "seed": loc_seed,
@@ -175,7 +176,7 @@ def main():
                         "height": 720
                     }
                     
-                    image_adapter.generate_image(bg_prompt, bg_path, generation_params=bg_params)
+                    image_adapter.generate_image(bg_prompt, bg_path, negative_prompt=negative, generation_params=bg_params)
                     memory_db.update_location_background(name, bg_path)
                 else:
                     logger.info(f"Background for {name} already exists.")
@@ -233,7 +234,7 @@ def main():
                     
                     # Moving style tags to the front to avoid 77-token truncation
                     quality_tags = "masterpiece, high score, great score, absurdres"
-                    manhwa_core = "manhwa, webtoon, korean style, thick outlines, vibrant colors"
+                    manhwa_core = "manhwa, webtoon, korean style, sharp lineart, digital media, flat color, cel shading, thick outlines, vibrant colors"
                     year_tag = "year 2024"
                     
                     # Generate a unique but deterministic seed for this character
@@ -241,7 +242,7 @@ def main():
                     
                     # Prioritize unique features at the FRONT of the prompt
                     prompt = f"{gender_tag}, solo, {dna_str}, {manhwa_core}, traditional eastern clothing, cinematic portrait, {year_tag}, {quality_tags}, rating_safe"
-                    negative = "lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
+                    negative = "watercolor, oil painting, traditional media, lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
                     
                     char_params = {
                         "seed": char_seed,
