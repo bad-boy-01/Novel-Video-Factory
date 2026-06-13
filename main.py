@@ -200,6 +200,10 @@ def main():
                 ref_images = p.get('reference_images', [])
                 output_path = os.path.join(images_dir, f"{scene_id}.png")
                 
+                if os.path.exists(output_path):
+                    logger.info(f"Image for {scene_id} already exists. Skipping generation.")
+                    continue
+                    
                 image_adapter.generate_image(prompt, output_path, negative_prompt, reference_image_paths=ref_images)
         else:
             logger.warning("No prompts.json found. Run the visual stage first.")
@@ -224,6 +228,10 @@ def main():
                 narration_text = p.get('metadata', {}).get('narration_text', 'Silence.')
                 output_path = os.path.join(audio_dir, f"{scene_id}.wav")
                 
+                if os.path.exists(output_path):
+                    logger.info(f"Audio for {scene_id} already exists. Skipping generation.")
+                    continue
+                    
                 audio_adapter.generate_audio(narration_text, output_path)
         else:
             logger.warning("No prompts.json found. Run the visual stage first.")
