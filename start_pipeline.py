@@ -91,6 +91,11 @@ def main():
             print(f"Cleared output directory: {output_dir}")
         os.makedirs(output_dir, exist_ok=True)
         
+        memory_dir = f"projects/{project_name}/memory"
+        if os.path.exists(memory_dir):
+            shutil.rmtree(memory_dir)
+            print(f"Cleared memory directory: {memory_dir}")
+            
         if os.path.exists(cache_file):
             os.remove(cache_file)
             print(f"Cleared cache: {cache_file}")
