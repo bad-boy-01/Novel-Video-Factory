@@ -117,13 +117,38 @@ class OnlineLLMAdapter:
             "temperature": temperature
         }
         
-        try:
-            response = requests.post(self.api_url, headers=headers, json=payload, timeout=120)
-            response.raise_for_status()
-            data = response.json()
-            return data["choices"][0]["message"]["content"]
-        except Exception as e:
-            logger.error(f"Error generating text with {self.provider} model {self.model_name}: {e}")
-            if hasattr(e, 'response') and e.response is not None:
-                logger.error(f"API Response: {e.response.text}")
-            raise
+        import time
+        max_retries = 5
+        base_delay = 3
+
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(self.api_url, headers=headers, json=payload, timeout=120)
+                
+                # Handle rate limits
+                if response.status_code == 429:
+                    retry_after = response.headers.get("Retry-After")
+                    sleep_time = float(retry_after) if retry_after else (base_delay * (2 ** attempt))
+                    logger.warning(f"Rate limit hit for {self.provider}. Retrying in {sleep_time:.2f} seconds... (Attempt {attempt+1}/{max_retries})")
+                    time.sleep(sleep_time)
+                    continue
+                    
+                response.raise_for_status()
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+                
+            except requests.exceptions.RequestException as e:
+                # If it's a 429 caught by raise_for_status, we handle it above.
+                # Other errors we break or raise.
+                if hasattr(e, 'response') and e.response is not None and e.response.status_code == 429:
+                    sleep_time = base_delay * (2 ** attempt)
+                    logger.warning(f"Rate limit hit for {self.provider}. Retrying in {sleep_time} seconds... (Attempt {attempt+1}/{max_retries})")
+                    time.sleep(sleep_time)
+                    continue
+                else:
+                    logger.error(f"Error generating text with {self.provider} model {self.model_name}: {e}")
+                    if hasattr(e, 'response') and e.response is not None:
+                        logger.error(f"API Response: {e.response.text}")
+                    raise
+                    
+        raise Exception(f"Max retries exceeded for {self.provider} API.")
