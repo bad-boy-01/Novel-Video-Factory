@@ -8,6 +8,7 @@ import shutil
 import uuid
 import subprocess
 import datetime
+import hashlib
 
 from core.project_manager import ProjectManager
 from core.translation.pipeline import TranslationPipeline
@@ -156,9 +157,25 @@ def main():
                 
                 if not loc.get('background_path') or not os.path.exists(bg_path):
                     logger.info(f"Generating Base Background for: {name}")
+                    
+                    # V3 Upgrade: Unique Seed for Location
+                    loc_seed = int(hashlib.sha256(name.encode('utf-8')).hexdigest(), 16) % 2147483647
+                    
                     manhwa_core = "manhwa, webtoon, korean style, thick outlines, vibrant colors"
-                    bg_prompt = f"{desc}, {manhwa_core}, landscape, detailed background, cinematic lighting, masterpiece, high score, year 2024, rating_safe"
-                    image_adapter.generate_image(bg_prompt, bg_path)
+                    quality_tags = "masterpiece, high score, great score, absurdres"
+                    
+                    # Prioritize location description at the FRONT
+                    bg_prompt = f"{desc}, {manhwa_core}, landscape, detailed background, cinematic lighting, year 2024, {quality_tags}, rating_safe"
+                    
+                    bg_params = {
+                        "seed": loc_seed,
+                        "steps": 30,
+                        "cfg": 6.5, # High adherence for master backgrounds
+                        "width": 1280,
+                        "height": 720
+                    }
+                    
+                    image_adapter.generate_image(bg_prompt, bg_path, generation_params=bg_params)
                     memory_db.update_location_background(name, bg_path)
                 else:
                     logger.info(f"Background for {name} already exists.")
