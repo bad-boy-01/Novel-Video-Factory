@@ -181,11 +181,11 @@ def main():
                         # Extract age if possible or just use the DNA string
                         pass 
                     
-                    # Better quality tags for Animagine XL 4.0
+                    # Better structure for Animagine XL 4.0 Manhwa style
+                    # Structure: Subject -> Details -> Style -> Quality
                     quality_tags = "masterpiece, high score, great score, absurdres"
-                    wuxia_style = "manhwa style, webtoon style, sharp lineart, vibrant colors, dramatic lighting, long hair, ancient chinese architecture"
                     
-                    prompt = f"{quality_tags}, {gender_tag}, {dna_str}, {wuxia_style}, cinematic portrait, detailed background, looking at viewer, {style_modifier}"
+                    prompt = f"{gender_tag}, solo, {dna_str}, long hair, traditional chinese clothing, cinematic portrait, detailed background, looking at viewer, rating_safe, {style_modifier}, {quality_tags}"
                     negative = config_manager.get('prompts.negative_prompt', 'lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry')
                     image_adapter.generate_image(prompt, img_path, negative_prompt=negative)
                 else:

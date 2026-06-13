@@ -77,12 +77,12 @@ class PromptGenerator:
         
         character_prompt = ", ".join(dna_descriptions)
         
-        # Quality and Style Tags for Animagine XL 4.0
+        # Quality and Style Tags for Animagine XL 4.0 Manhwa style
         quality_tags = "masterpiece, high score, great score, absurdres"
-        wuxia_style = "manhwa style, webtoon style, sharp lineart, vibrant colors, dramatic lighting, long hair, traditional chinese clothing"
+        wuxia_details = "long hair, traditional chinese clothing, ancient chinese architecture"
         
-        # Put quality_tags first for better prompt adherence
-        full_prompt = f"{quality_tags}. {camera}. {action_desc}. {lighting}. {character_prompt}. {wuxia_style}, {self.base_style}."
+        # Build Structured Prompt: Subject -> Details -> Style -> Quality
+        full_prompt = f"{character_prompt}, {camera}, {action_desc}, {lighting}, {wuxia_details}, rating_safe, {self.base_style}, {quality_tags}"
         
         return {
             "scene_id": scene.get("scene_id"),
