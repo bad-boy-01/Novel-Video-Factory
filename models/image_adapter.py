@@ -111,9 +111,9 @@ class LocalImageAdapter:
 
         return prompt_embeds, pooled_prompt_embeds_2, neg_embeds, neg_pooled_2
 
-    def generate_image(self, prompt: str, output_path: str, negative_prompt: str = "", reference_image_paths: list = None):
+    def generate_image(self, prompt: str, output_path: str, negative_prompt: str = "", reference_image_paths: list = None, generation_params: dict = None):
         """
-        Generates an image from a prompt and saves it.
+        Generates an image from a prompt and saves it. Uses generation_params for deterministic output.
         """
         if self.pipeline is not None:
             # Real generation
@@ -122,15 +122,29 @@ class LocalImageAdapter:
             # Layer 8.3: Long Prompt Support
             prompt_embeds, pooled_prompt_embeds, neg_embeds, neg_pooled = self._encode_prompt(prompt, negative_prompt)
             
+            # V3 Upgrade: Persistent Seeds and Configurable Params
+            if generation_params is None:
+                generation_params = {}
+                
+            seed = generation_params.get("seed", 42)
+            steps = generation_params.get("steps", 30)
+            cfg = generation_params.get("cfg", 5.0)
+            width = generation_params.get("width", 1280)
+            height = generation_params.get("height", 720)
+            
+            import torch
+            generator = torch.Generator(self.pipeline.device).manual_seed(seed)
+            
             kwargs = {
                 "prompt_embeds": prompt_embeds,
                 "pooled_prompt_embeds": pooled_prompt_embeds,
                 "negative_prompt_embeds": neg_embeds,
                 "negative_pooled_prompt_embeds": neg_pooled,
-                "width": 1280,
-                "height": 720,
-                "num_inference_steps": 30, # Increased for higher quality with 4.0
-                "guidance_scale": 5.0      # Animagine 4.0 recommends 4-7
+                "width": width,
+                "height": height,
+                "num_inference_steps": steps,
+                "guidance_scale": cfg,
+                "generator": generator
             }
             
             # Inject IP Adapter if reference images are provided
@@ -157,6 +171,15 @@ class LocalImageAdapter:
             image = self.pipeline(**kwargs).images[0]
             image.save(output_path)
             logger.info(f"Saved real generated image to {output_path}")
+            
+            # V3 Upgrade: Kaggle Optimization (Step 16)
+            # Aggressive memory cleanup to prevent OOM on long runs
+            import gc
+            import torch
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.ipc_collect()
         else:
             # Mock generation
             logger.info(f"Generating mock image for prompt: {prompt}")

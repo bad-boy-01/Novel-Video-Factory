@@ -125,10 +125,38 @@ def main():
                 for concept in memory_data.get("world_concepts", []):
                     if memory_db.add_world_concept(concept.get('concept_type', 'misc'), concept.get('name', 'Unknown'), concept.get('description', '')):
                         logger.info(f"Saved world concept to DB: {concept.get('name')}")
+                
+                # V3 Upgrade: Relationships
+                for rel in memory_data.get("relationships", []):
+                    if memory_db.add_relationship(rel.get('char1'), rel.get('char2'), rel.get('type'), rel.get('staging', '')):
+                        logger.info(f"Saved relationship: {rel.get('char1')} <-> {rel.get('char2')} ({rel.get('type')})")
                     
                 # Mark chunk as complete
                 with open(chunk_marker, 'w') as f:
                     f.write("done")
+            
+            # V3 Upgrade: Background Cache (Step 14)
+            logger.info("Generating Background Cache for all locations...")
+            from models.image_adapter import LocalImageAdapter
+            image_adapter = LocalImageAdapter()
+            loc_dir = os.path.join(pm.project_dir, 'memory', 'locations')
+            os.makedirs(loc_dir, exist_ok=True)
+            
+            locations = memory_db.get_all_locations()
+            for loc in locations:
+                name = loc['canonical_name']
+                desc = loc['description']
+                safe_name = re.sub(r'[\\/*?:"<>|]', "", name).strip().replace(" ", "_")
+                bg_path = os.path.join(loc_dir, f"{safe_name}.png")
+                
+                if not loc.get('background_path') or not os.path.exists(bg_path):
+                    logger.info(f"Generating Base Background for: {name}")
+                    manhwa_core = "manhwa, webtoon, korean style, thick outlines, vibrant colors"
+                    bg_prompt = f"{desc}, {manhwa_core}, landscape, detailed background, cinematic lighting, masterpiece, high score, year 2024, rating_safe"
+                    image_adapter.generate_image(bg_prompt, bg_path)
+                    memory_db.update_location_background(name, bg_path)
+                else:
+                    logger.info(f"Background for {name} already exists.")
                     
                 # World Style extraction (only needed once per chapter/file)
                 if chunk_idx == 0:
@@ -150,7 +178,8 @@ def main():
         
         style_modifier = config_manager.get('prompts.style_modifier', 'Cinematic, high quality')
         
-        with memory_db.Session() as session:
+        session = memory_db.Session()
+        try:
             from core.memory.database import Character
             characters = session.query(Character).all()
             for char in characters:
@@ -182,17 +211,20 @@ def main():
                         pass 
                     
                     # Move style tags to the front to avoid 77-token truncation
-                    quality_tags = "masterpiece, high score, great score"
-                    manhwa_core = "manhwa, webtoon, korean style, thick outlines"
+                    quality_tags = "masterpiece, high score, great score, absurdres"
+                    manhwa_core = "manhwa, webtoon, korean style, thick outlines, vibrant colors"
+                    year_tag = "year 2024"
                     
                     # Truncate DNA string if it's too long
                     dna_short = dna_str[:120] if len(dna_str) > 120 else dna_str
                     
-                    prompt = f"{manhwa_core}, {gender_tag}, solo, {dna_short}, traditional eastern clothing, cinematic portrait, {quality_tags}, rating_safe"
-                    negative = config_manager.get('prompts.negative_prompt', 'lowres, bad anatomy, bad hands, text, error, worst quality, low quality, signature, watermark, blurry')
+                    prompt = f"{gender_tag}, solo, {dna_short}, {manhwa_core}, traditional eastern clothing, cinematic portrait, {year_tag}, {quality_tags}, rating_safe"
+                    negative = "lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
                     image_adapter.generate_image(prompt, img_path, negative_prompt=negative)
                 else:
                     logger.info(f"Reference Sheet already exists for {char.canonical_name}, skipping.")
+        finally:
+            session.close()
 
     if args.stage in ['all', 'visual']:
         logger.info("Running Visual Planning...")
@@ -215,29 +247,50 @@ def main():
             text = pm.read_input(os.path.join(pm.dirs['output'], file))
             chunks = text_chunker.chunk_text(text, max_words=500)
             
+            # Get a short file identifier to avoid collisions
+            file_name = os.path.basename(file)
+            file_id = file_name.replace('translated_', '').split('.')[0]
+            
+            current_sentence_index = 0
             for chunk_idx, chunk_data in enumerate(chunks):
-                visual_marker = os.path.join(pm.dirs['output'], f"visual_{file}_{chunk_idx}.json")
+                visual_marker = os.path.join(pm.dirs['output'], f"visual_{file_name}_{chunk_idx}.json")
+                
+                chunk_prompts = []
                 if os.path.exists(visual_marker):
-                    logger.info(f"Skipping Visual Planning for Chunk {chunk_idx + 1}/{len(chunks)} (Already Planned)")
-                    import json
+                    logger.info(f"Loading cached Visual Plan for Chunk {chunk_idx + 1}/{len(chunks)}")
                     with open(visual_marker, 'r', encoding='utf-8') as f:
-                        chunk_prompts = json.load(f)
+                        cached_data = json.load(f)
+                    
+                    # Force unique IDs even for cached data to fix previous collision issues
+                    for cp in cached_data:
+                        if f"{file_id}_C{chunk_idx}_" not in cp['scene_id']:
+                            old_id = cp['scene_id']
+                            cp['scene_id'] = f"{file_id}_C{chunk_idx}_{old_id}"
+                        chunk_prompts.append(cp)
+                    
                     all_prompts.extend(chunk_prompts)
+                    # Update sentence index even for cached chunks
+                    chunk_sentences = len(chunk_data.get("sentences", []))
+                    current_sentence_index += chunk_sentences
                     continue
 
                 chunk_text = " ".join([s["text"] for s in chunk_data["sentences"]])
                 logger.info(f"Visual Planning for Chunk {chunk_idx + 1}/{len(chunks)} ({chunk_data['word_count']} words)")
                 
-                scenes = planner.plan_scenes(chunk_text)
+                scenes = planner.plan_scenes(chunk_text, start_index=current_sentence_index)
+                current_sentence_index += len(chunk_data["sentences"])
                 
-                chunk_prompts = []
-                for scene in scenes:
+                for scene_idx, scene in enumerate(scenes):
+                    # Ensure scene_id is unique across chunks and files
+                    original_id = scene.get('scene_id', f'SC{scene_idx:03d}')
+                    new_id = f"{file_id}_C{chunk_idx}_{original_id}"
+                    scene['scene_id'] = new_id
+                    
                     prompt_data = prompter.generate_prompt_for_scene(scene)
                     chunk_prompts.append(prompt_data)
                     all_prompts.append(prompt_data)
-                    logger.info(f"Generated prompt for {scene.get('scene_id')}: {prompt_data['prompt']}")
+                    logger.info(f"Generated prompt for {new_id}")
                 
-                import json
                 with open(visual_marker, 'w', encoding='utf-8') as f:
                     json.dump(chunk_prompts, f, indent=2)
                 
@@ -265,13 +318,23 @@ def main():
                 prompt = p.get('prompt')
                 negative_prompt = p.get('negative_prompt', '')
                 ref_images = p.get('reference_images', [])
+                gen_params = p.get('generation_params', {})
+                prompt_hash = p.get('prompt_hash')
+                
                 output_path = os.path.join(images_dir, f"{scene_id}.png")
                 
-                if os.path.exists(output_path):
-                    logger.info(f"Image for {scene_id} already exists. Skipping generation.")
+                # Check Prompt Cache (V3 Upgrade)
+                cached_hash = pm.get_checkpoint_value('prompt_cache', scene_id)
+                if os.path.exists(output_path) and cached_hash == prompt_hash:
+                    logger.info(f"Image for {scene_id} exists and prompt hash matches. Skipping generation.")
                     continue
+                elif os.path.exists(output_path):
+                    logger.info(f"Image for {scene_id} exists but prompt hash changed. Regenerating.")
                     
-                image_adapter.generate_image(prompt, output_path, negative_prompt, reference_image_paths=ref_images)
+                image_adapter.generate_image(prompt, output_path, negative_prompt, reference_image_paths=ref_images, generation_params=gen_params)
+                
+                # Update Cache
+                pm.save_checkpoint('prompt_cache', prompt_hash, sub_key=scene_id)
         else:
             logger.warning("No prompts.json found. Run the visual stage first.")
             
@@ -354,23 +417,35 @@ def main():
             # Create human readable dump
             try:
                 memory_db = MemoryEngine(pm.project_dir)
-                with memory_db.Session() as session:
+                session = memory_db.Session()
+                try:
                     from core.memory.database import Character
                     chars = session.query(Character).all()
                     data = [{"name": c.canonical_name, "visual_dna": c.visual_dna} for c in chars]
                     with open(os.path.join(export_dir, 'characters_dump.json'), 'w', encoding='utf-8') as f:
                         json.dump(data, f, indent=2)
-                logger.info("Generated human-readable characters_dump.json.")
+                    logger.info("Generated human-readable characters_dump.json.")
+                finally:
+                    session.close()
             except Exception as e:
                 logger.warning(f"Could not generate character dump: {e}")
                     
         # Copy videos
-        output_dir = os.path.join(pm.project_dir, 'output')
-        if os.path.exists(output_dir):
-            for f in os.listdir(output_dir):
+        videos_dir = os.path.join(pm.project_dir, 'output', 'videos')
+        if os.path.exists(videos_dir):
+            for f in os.listdir(videos_dir):
                 if f.endswith('.mp4'):
-                    shutil.copy(os.path.join(output_dir, f), os.path.join(export_dir, f))
+                    video_path = os.path.join(videos_dir, f)
+                    shutil.copy(video_path, os.path.join(export_dir, f))
                     logger.info(f"Packaged video: {f}")
+                    
+                    # Layer 9: Automated Google Drive Backup
+                    try:
+                        from core.publishing.drive_uploader import DriveUploader
+                        uploader = DriveUploader(config_manager)
+                        uploader.upload_file(video_path)
+                    except Exception as drive_e:
+                        logger.warning(f"Google Drive upload failed or skipped: {drive_e}")
                     
         # Copy configuration file
         config_path = os.path.abspath(args.config)

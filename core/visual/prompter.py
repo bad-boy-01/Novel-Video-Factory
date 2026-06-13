@@ -26,7 +26,7 @@ class PromptGenerator:
         
     def generate_prompt_for_scene(self, scene: Dict) -> Dict:
         """
-        Creates a Stable Diffusion/FLUX prompt for a single scene, injecting Character DNA.
+        Creates a Stable Diffusion/FLUX prompt for a single scene, injecting Character DNA and World Context.
         """
         characters_present = scene.get("characters_present", [])
         dna_descriptions = []
@@ -35,12 +35,18 @@ class PromptGenerator:
         project_dir = self.memory_engine.project_dir if hasattr(self.memory_engine, 'project_dir') else ""
         ref_images = []
         
+        # 1. Character DNA Injection
         for char_name in characters_present:
             char_data = self.memory_engine.get_character_by_name(char_name)
             if char_data:
                 dna = char_data.get("visual_dna", {})
-                # Format DNA into a string
-                dna_str = ", ".join([f"{v}" if not isinstance(v, dict) else "" for k, v in dna.items()]).strip()
+                # Format DNA into a detailed string of tags
+                dna_tags = []
+                for k, v in dna.items():
+                    if v and str(v).lower() not in ['none', 'unknown', 'not specified']:
+                        dna_tags.append(str(v))
+                
+                dna_str = ", ".join(dna_tags)
                 
                 # Deduce gender for Danbooru-based models
                 dna_lower = dna_str.lower()
@@ -51,26 +57,44 @@ class PromptGenerator:
                     gender_tag = "1boy"
                 
                 if dna_str:
-                    dna_descriptions.append(f"{gender_tag}, {char_name}, {dna_str}")
+                    dna_descriptions.append(f"{gender_tag}, {dna_str}")
                 else:
                     dna_descriptions.append(f"{gender_tag}, {char_name}")
                     
                 # Look for reference image
-                if project_dir and len(characters_present) == 1:
+                if project_dir:
                     import re
                     safe_name = re.sub(r'[\\/*?:"<>|]', "", char_name).strip().replace(" ", "_")
                     img_path = os.path.join(project_dir, 'memory', 'character_sheets', f"{safe_name}.png")
                     
-                    # Fallback to ID-based naming for backward compatibility
-                    if not os.path.exists(img_path):
-                        img_path = os.path.join(project_dir, 'memory', 'character_sheets', f"{char_data.get('id')}.png")
-                        
                     if os.path.exists(img_path):
                         ref_images.append(img_path)
             else:
                 dna_descriptions.append(char_name)
                 
-        # Build prompt
+        # 2. World Concept & Location Injection
+        location_tags = ""
+        world_tags = ""
+        staging_tags = self.memory_engine.get_relationship_staging(characters_present)
+        narration = scene.get('narration_text', '').lower()
+        
+        # Check for locations in the narration/scene metadata
+        with self.memory_engine.Session() as session:
+            from core.memory.database import Location, WorldConcept
+            locations = session.query(Location).all()
+            for loc in locations:
+                if loc.canonical_name.lower() in narration:
+                    location_tags += f"{loc.description}, "
+                    # V3 Upgrade: Background Reference
+                    if loc.background_path and os.path.exists(loc.background_path):
+                        ref_images.append(loc.background_path)
+            
+            concepts = session.query(WorldConcept).all()
+            for concept in concepts:
+                if concept.name.lower() in narration:
+                    world_tags += f"{concept.name}, {concept.description}, "
+
+        # Build prompt components
         action_desc = scene.get('visual_prompt_tags', '')
         camera = scene.get('camera_angle', 'medium shot')
         lighting = scene.get('lighting', 'cinematic lighting')
@@ -78,18 +102,34 @@ class PromptGenerator:
         character_prompt = ", ".join(dna_descriptions)
         
         # Quality and Style Tags for Animagine XL 4.0 Manhwa style
-        quality_tags = "masterpiece, high score, great score"
-        manhwa_core = "manhwa, webtoon, korean style, thick outlines"
-        cinematic_tags = "cinematic lighting, atmospheric, moody, melancholic, soft focus, high resolution"
+        quality_tags = "masterpiece, high score, great score, absurdres"
+        manhwa_core = "manhwa, webtoon, korean style, thick outlines, vibrant colors"
+        cinematic_tags = "cinematic lighting, atmospheric, moody, soft focus, high resolution"
+        year_tag = "year 2024"
         
-        # Build Structured Prompt: Style -> Subject -> Action -> Quality
-        # This ensures the core style and atmospheric lighting are prioritized
-        full_prompt = f"{manhwa_core}, {character_prompt}, {camera}, {action_desc}, {lighting}, {cinematic_tags}, ancient architecture, {quality_tags}, rating_safe"
+        # Build Structured Prompt: Subject -> General -> Style -> Quality
+        # We prioritize character features and scene-specific items to keep them connected to the story
+        full_prompt = f"{character_prompt}, {staging_tags}, {action_desc}, {world_tags}{location_tags}{camera}, {manhwa_core}, {lighting}, {cinematic_tags}, {year_tag}, {quality_tags}, rating_safe"
+        negative_prompt = "lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
+        
+        # V3 Upgrade: Persistent Seeds and Prompt Hashing
+        import random
+        import hashlib
+        seed = scene.get('seed', random.randint(0, 2147483647))
+        prompt_hash = hashlib.sha256((full_prompt + negative_prompt).encode('utf-8')).hexdigest()
         
         return {
             "scene_id": scene.get("scene_id"),
             "prompt": full_prompt,
-            "negative_prompt": "lowres, bad anatomy, bad hands, text, error, worst quality, low quality, signature, watermark, blurry",
+            "negative_prompt": negative_prompt,
             "metadata": scene,
-            "reference_images": ref_images
+            "reference_images": ref_images,
+            "generation_params": {
+                "seed": seed,
+                "steps": 28,
+                "cfg": 5.0,
+                "width": 1280,
+                "height": 720
+            },
+            "prompt_hash": prompt_hash
         }

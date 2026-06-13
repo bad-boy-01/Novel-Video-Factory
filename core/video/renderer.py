@@ -16,10 +16,13 @@ class VideoRenderer:
     """
     def __init__(self, project_dir: str):
         self.output_dir = os.path.join(project_dir, 'output')
+        self.videos_dir = os.path.join(self.output_dir, 'videos')
+        os.makedirs(self.videos_dir, exist_ok=True)
+        
         self.prompts_path = os.path.join(self.output_dir, 'prompts.json')
         self.images_dir = os.path.join(self.output_dir, 'images')
         self.audio_dir = os.path.join(self.output_dir, 'audio')
-        self.final_video_path = os.path.join(self.output_dir, 'final_video.mp4')
+        self.final_video_path = os.path.join(self.videos_dir, 'final_video.mp4')
         
     def render(self):
         if not os.path.exists(self.prompts_path):
@@ -74,35 +77,60 @@ class VideoRenderer:
                     img_clip = img_clip.resize(zoom_effect).set_position('center')
                     
                     try:
-                        # Layer 8.2: Cinematic Subtitles
+                        # Layer 8.2: Cinematic Subtitles (Sentence-based splitting)
                         from moviepy.editor import TextClip, CompositeVideoClip, ColorClip
                         from core.config_manager import ConfigManager
+                        import re
                         config = ConfigManager()
                         
                         subtitle_text = p.get('metadata', {}).get('narration_text', '')
                         
                         if subtitle_text:
-                            # Enhanced TextClip with better readability
-                            txt_clip = TextClip(
-                                subtitle_text,
-                                font=config.get('video.font', 'Arial-Bold'),
-                                fontsize=config.get('video.font_size', 44),
-                                color='white',
-                                method='caption',
-                                size=(img_clip.w * 0.8, None),
-                                align='center'
-                            ).set_duration(duration)
+                            # Split into sentences
+                            sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', subtitle_text) if s.strip()]
                             
-                            # Add a semi-transparent dark bar behind the text
-                            bg_w = img_clip.w
-                            bg_h = txt_clip.h + 40
-                            txt_bg = ColorClip(size=(bg_w, bg_h), color=(0, 0, 0)).set_opacity(0.4).set_duration(duration)
+                            # Group sentences (max 2 sentences, or 1 if the first is long)
+                            groups = []
+                            i = 0
+                            while i < len(sentences):
+                                s1 = sentences[i]
+                                if i + 1 < len(sentences) and len(s1) < 80 and (len(s1) + len(sentences[i+1])) < 140:
+                                    groups.append(s1 + " " + sentences[i+1])
+                                    i += 2
+                                else:
+                                    groups.append(s1)
+                                    i += 1
                             
-                            # Position background and text at bottom
-                            txt_bg = txt_bg.set_position(('center', 'bottom'))
-                            txt_clip = txt_clip.set_position(('center', bg_h/2 - txt_clip.h/2 + (img_clip.h - bg_h)))
+                            num_groups = len(groups)
+                            group_duration = duration / num_groups
+                            subtitle_clips = []
                             
-                            img_clip = CompositeVideoClip([img_clip, txt_bg, txt_clip])
+                            for idx, group_text in enumerate(groups):
+                                start_t = idx * group_duration
+                                
+                                # Enhanced TextClip with better readability
+                                txt_clip = TextClip(
+                                    group_text,
+                                    font=config.get('video.font', 'Arial-Bold'),
+                                    fontsize=config.get('video.font_size', 44),
+                                    color='white',
+                                    method='caption',
+                                    size=(img_clip.w * 0.8, None),
+                                    align='center'
+                                ).set_duration(group_duration).set_start(start_t)
+                                
+                                # Add a semi-transparent dark bar behind the text
+                                bg_w = img_clip.w
+                                bg_h = txt_clip.h + 40
+                                txt_bg = ColorClip(size=(bg_w, bg_h), color=(0, 0, 0)).set_opacity(0.4).set_duration(group_duration).set_start(start_t)
+                                
+                                # Position background and text at bottom
+                                txt_bg = txt_bg.set_position(('center', 'bottom'))
+                                txt_clip = txt_clip.set_position(('center', (img_clip.h - bg_h) + (bg_h - txt_clip.h)/2))
+                                
+                                subtitle_clips.extend([txt_bg, txt_clip])
+                            
+                            img_clip = CompositeVideoClip([img_clip] + subtitle_clips)
                     except Exception as text_e:
                         logger.warning(f"Failed to generate TextClip: {text_e}")
 
@@ -151,6 +179,13 @@ class VideoRenderer:
                 final_video.close()
                 for c in clips:
                     c.close()
+                
+                # V3 Upgrade: Aggressive garbage collection
+                import gc
+                import torch
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
             except Exception as e:
                 logger.warning(f"Failed to close all clips: {e}")
 

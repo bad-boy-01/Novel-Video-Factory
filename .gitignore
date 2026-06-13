@@ -16,7 +16,23 @@ pip-delete-this-directory.txt
 
 # Project Output and Caches
 projects/*/output/
+projects/*/checkpoints/
+projects/*/export/
+projects/*/memory/locations/
+projects/*/memory/character_sheets/
 cache_manifest.json
+
+# Media and Large Files
+*.mp4
+*.png
+*.jpg
+*.wav
+plan.txt
+
+# Temp and Scratch
+test_image.py
+image genrated from kaggle/
+
 
 # IDEs
 .idea/

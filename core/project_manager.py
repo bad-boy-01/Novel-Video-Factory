@@ -33,6 +33,24 @@ class ProjectManager:
             'checkpoints': os.path.join(self.project_dir, 'checkpoints')
         }
         self._ensure_directories()
+        
+        # V3 Upgrade: Manifest generation
+        self.manifest_file = os.path.join(self.project_dir, 'manifest.json')
+        self._init_manifest()
+
+    def _init_manifest(self):
+        """Initializes or loads the project manifest metadata."""
+        if not os.path.exists(self.manifest_file):
+            import datetime
+            manifest_data = {
+                "project": self.project_name,
+                "created": datetime.datetime.now().isoformat(),
+                "engine_version": "3.0",
+                "memory_version": "1.0",
+                "storyboard_version": "1.0"
+            }
+            with open(self.manifest_file, 'w', encoding='utf-8') as f:
+                json.dump(manifest_data, f, indent=2)
 
     def _ensure_directories(self):
         for dir_path in self.dirs.values():
@@ -62,21 +80,30 @@ class ProjectManager:
         with open(filename, 'r', encoding='utf-8') as f:
             return f.read()
 
-    def save_output(self, filename: str, content: str):
-        path = os.path.join(self.dirs['output'], filename)
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(content)
-        logger.info(f"Saved output to {path}")
-
-    def save_checkpoint(self, stage: str, data: dict):
+    def save_checkpoint(self, stage: str, data: dict, sub_key: str = None):
+        """Saves checkpoint data, optionally under a sub-key for granular tracking."""
         path = os.path.join(self.dirs['checkpoints'], f"{stage}.json")
+        current_data = self.load_checkpoint(stage) or {}
+        
+        if sub_key:
+            current_data[sub_key] = data
+        else:
+            current_data.update(data)
+            
         with open(path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2)
-        logger.info(f"Checkpoint saved for stage: {stage}")
+            json.dump(current_data, f, indent=2)
+        logger.debug(f"Checkpoint updated for stage: {stage} (key: {sub_key})")
 
-    def load_checkpoint(self, stage: str) -> dict:
-        path = os.path.join(self.dirs['checkpoints'], f"{stage}.json")
-        if os.path.exists(path):
-            with open(path, 'r', encoding='utf-8') as f:
-                return json.load(f)
+    def is_complete(self, stage: str, sub_key: str) -> bool:
+        """Checks if a specific sub-task in a stage is already complete."""
+        data = self.load_checkpoint(stage)
+        if data and sub_key in data:
+            return True
+        return False
+
+    def get_checkpoint_value(self, stage: str, sub_key: str):
+        """Retrieves a specific value from a stage checkpoint."""
+        data = self.load_checkpoint(stage)
+        if data:
+            return data.get(sub_key)
         return None

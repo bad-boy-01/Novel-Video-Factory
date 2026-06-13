@@ -43,9 +43,11 @@ video:
   output_format: "mp4"
 
 prompts:
-  style_modifier: "manhwa, webtoon, korean style, sharp lineart, high saturation"
-  negative_prompt: "lowres, bad anatomy, error, worst quality, low quality, blurry"
+  style_modifier: "manhwa, webtoon, korean style, sharp lineart, high saturation, year 2024"
+  negative_prompt: "lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
 
 system:
   cache_enabled: true
   qa_enabled: true
+  gdrive_folder_id: "" # Optional: ID of the Drive folder to upload to
+  gdrive_creds_path: "credentials/gdrive_service_account.json" # Optional: Local path for non-Kaggle runs

@@ -20,22 +20,19 @@ class MemoryExtractor:
         existing_char_list = ", ".join([c['canonical_name'] for c in existing_characters]) if existing_characters else "None"
         
         system_prompt = (
-            "You are an expert lore master and character designer. Read the story text and extract ALL characters, locations, and world concepts.\n"
-            "Return the data STRICTLY as a JSON object with keys: 'characters', 'locations', 'world_concepts'.\n\n"
+            "You are an expert lore master and character designer. Read the story text and extract ALL characters, locations, world concepts, and character relationships.\n"
+            "Return the data STRICTLY as a JSON object with keys: 'characters', 'locations', 'world_concepts', 'relationships'.\n\n"
             "EXISTING CHARACTERS (Reuse these names exactly if they appear): " + existing_char_list + "\n\n"
-            "CRITICAL RULES FOR CHARACTERS:\n"
-            "1. You MUST use Danbooru-style tags for 'age', 'body_type', 'face_info', 'hair', 'eyes', and 'clothing'.\n"
-            "2. For children, use tags like 'young boy', 'little girl', 'toddler', 'child'.\n"
-            "3. For 'age', be specific (e.g., '6 years old', 'late 30s').\n"
-            "4. If a character is already in the EXISTING list, only provide visual_dna if new information is found; otherwise keep it consistent.\n"
-            "5. Character DNA must be specific enough for high-quality image generation.\n"
-            "6. DO NOT extract locations or objects as characters (e.g., 'Village', 'Sword' are NOT characters).\n\n"
+            "CRITICAL RULES FOR RELATIONSHIPS:\n"
+            "1. Identify connections between characters (e.g., 'A is B's master', 'A and B are enemies').\n"
+            "2. relationship_type should be one of: 'master-disciple', 'enemy', 'romantic', 'family', 'friend', 'neutral'.\n"
+            "3. Include 'staging' notes (e.g., 'protective', 'distant', 'aggressive').\n\n"
             "EXAMPLE OUTPUT FORMAT:\n"
             "{\n"
-            "  \"characters\": [{\"canonical_name\": \"Xu Changshou\", \"visual_dna\": {\"age\": \"6 years old\", \"body_type\": \"young boy, small, weak\", \"face_info\": \"pale skin, black eyes\", \"hair\": \"short black hair\", \"clothing\": \"tattered ancient peasant clothes\"}}],\n"
-
-            "  \"locations\": [{\"canonical_name\": \"Xiaoyan Village\", \"description\": \"A poor, famine-stricken mountain village.\"}],\n"
-            "  \"world_concepts\": [{\"concept_type\": \"item\", \"name\": \"Amber Egg\", \"description\": \"A preserved century egg, translucent and golden.\"}]\n"
+            "  \"characters\": [...],\n"
+            "  \"locations\": [...],\n"
+            "  \"world_concepts\": [...],\n"
+            "  \"relationships\": [{\"char1\": \"Xu Changshou\", \"char2\": \"Master Lin\", \"type\": \"master-disciple\", \"staging\": \"respectful distance\"}]\n"
             "}"
         )
         
