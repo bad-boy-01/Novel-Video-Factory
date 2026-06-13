@@ -27,11 +27,12 @@ class PromptGenerator:
                     self.base_style = f"{world_tags}, {self.base_style}"
                     logger.info(f"Loaded Dynamic World Style: {world_tags}")
         
-    def generate_prompt_for_scene(self, scene: Dict) -> Dict:
+    def generate_prompt_for_shot(self, shot: Dict, scene: Dict) -> Dict:
         """
-        Creates a Stable Diffusion/FLUX prompt for a single scene, injecting Character DNA and World Context.
+        Creates a Stable Diffusion/FLUX prompt for a single cinematic SHOT, 
+        injecting context from the parent Narrative Scene.
         """
-        characters_present = scene.get("characters_present", [])
+        characters_present = scene.get("characters", [])
         dna_descriptions = []
         
         project_dir = self.memory_engine.project_dir if hasattr(self.memory_engine, 'project_dir') else ""
@@ -42,15 +43,10 @@ class PromptGenerator:
             char_data = self.memory_engine.get_character_by_name(char_name)
             if char_data:
                 dna = char_data.get("visual_dna", {})
-                # Format DNA into a detailed string of tags
-                dna_tags = []
-                for k, v in dna.items():
-                    if v and str(v).lower() not in ['none', 'unknown', 'not specified']:
-                        dna_tags.append(str(v))
-                
+                dna_tags = [str(v) for k, v in dna.items() if v and str(v).lower() not in ['none', 'unknown', 'not specified']]
                 dna_str = ", ".join(dna_tags)
                 
-                # Deduce gender for Danbooru-based models
+                # Deduce gender
                 dna_lower = dna_str.lower()
                 name_lower = char_name.lower()
                 if any(w in dna_lower or w in name_lower for w in ["girl", "woman", "female", "sister", "mother", "wife", "chunni", "xiue", "mei", "her ", "she ", "madam", "dress", "aunt", "lady"]):
@@ -58,71 +54,64 @@ class PromptGenerator:
                 else:
                     gender_tag = "1boy"
                 
-                if dna_str:
-                    dna_descriptions.append(f"{gender_tag}, {dna_str}")
-                else:
-                    dna_descriptions.append(f"{gender_tag}, {char_name}")
+                dna_descriptions.append(f"{gender_tag}, {dna_str}" if dna_str else f"{gender_tag}, {char_name}")
                     
-                # Look for reference image
+                # Reference image
                 if project_dir:
                     safe_name = re.sub(r'[\\/*?:"<>|]', "", char_name).strip().replace(" ", "_")
                     img_path = os.path.join(project_dir, 'memory', 'character_sheets', f"{safe_name}.png")
-                    
                     if os.path.exists(img_path):
                         ref_images.append(img_path)
             else:
                 dna_descriptions.append(char_name)
                 
-        # 2. World Concept & Location Injection
+        # 2. World Context (from Scene)
         location_tags = ""
         world_tags = ""
         staging_tags = self.memory_engine.get_relationship_staging(characters_present)
-        narration = scene.get('narration_text', '').lower()
+        location_name = scene.get('location', '').lower()
         
-        # Check for locations in the narration/scene metadata
         with self.memory_engine.Session() as session:
             from core.memory.database import Location, WorldConcept
             locations = session.query(Location).all()
             for loc in locations:
-                if loc.canonical_name.lower() in narration:
+                if loc.canonical_name.lower() in location_name or loc.canonical_name.lower() in shot.get('visual_prompt_tags', '').lower():
                     location_tags += f"{loc.description}, "
-                    # V3 Upgrade: Background Reference
                     if loc.background_path and os.path.exists(loc.background_path):
                         ref_images.append(loc.background_path)
             
             concepts = session.query(WorldConcept).all()
             for concept in concepts:
-                if concept.name.lower() in narration:
+                if concept.name.lower() in shot.get('narration_text', '').lower():
                     world_tags += f"{concept.name}, {concept.description}, "
 
-        # Build prompt components
-        action_desc = scene.get('visual_prompt_tags', '')
-        camera = scene.get('camera_angle', 'medium shot')
+        # 3. Shot-Specific Visuals
+        action_tags = shot.get('visual_prompt_tags', '')
+        camera = shot.get('camera', 'medium shot')
         lighting = scene.get('lighting', 'cinematic lighting')
         
         character_prompt = ", ".join(dna_descriptions)
         
-        # Quality and Style Tags for Animagine XL 4.0 Manhwa style
+        # Styles
         quality_tags = "masterpiece, high score, great score, absurdres"
         manhwa_core = "manhwa, webtoon, korean style, thick outlines, vibrant colors"
         cinematic_tags = "cinematic lighting, atmospheric, moody, soft focus, high resolution"
         year_tag = "year 2024"
         
-        # Build Structured Prompt: Subject -> General -> Style -> Quality
-        # We prioritize character features and scene-specific items to keep them connected to the story
-        full_prompt = f"{character_prompt}, {staging_tags}, {action_desc}, {world_tags}{location_tags}{camera}, {manhwa_core}, {lighting}, {cinematic_tags}, {year_tag}, {quality_tags}, rating_safe"
+        full_prompt = f"{character_prompt}, {staging_tags}, {action_tags}, {world_tags}{location_tags}{camera}, {manhwa_core}, {lighting}, {cinematic_tags}, {year_tag}, {quality_tags}, rating_safe"
         negative_prompt = "lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
         
-        # V3 Upgrade: Persistent Seeds and Prompt Hashing
-        seed = scene.get('seed', random.randint(0, 2147483647))
+        # Deterministic Seed
+        import random, hashlib
+        seed = shot.get('seed', random.randint(0, 2147483647))
         prompt_hash = hashlib.sha256((full_prompt + negative_prompt).encode('utf-8')).hexdigest()
         
         return {
-            "scene_id": scene.get("scene_id"),
+            "shot_id": shot.get("shot_id"),
             "prompt": full_prompt,
             "negative_prompt": negative_prompt,
-            "metadata": scene,
-            "reference_images": ref_images,
+            "metadata": {**scene, **shot}, # Merge metadata
+            "reference_images": list(set(ref_images)),
             "generation_params": {
                 "seed": seed,
                 "steps": 28,
@@ -132,3 +121,15 @@ class PromptGenerator:
             },
             "prompt_hash": prompt_hash
         }
+
+    def generate_prompt_for_scene(self, scene: Dict) -> Dict:
+        """Legacy support for Scene-based prompting (will be removed)."""
+        # (Internal logic redirecting to generate_prompt_for_shot with a mock shot)
+        mock_shot = {
+            "shot_id": f"{scene.get('scene_id')}_A",
+            "camera": scene.get('camera_angle', 'medium shot'),
+            "visual_prompt_tags": scene.get('visual_prompt_tags', ''),
+            "narration_text": scene.get('narration_text', ''),
+            "duration_estimate": 5.0
+        }
+        return self.generate_prompt_for_shot(mock_shot, scene)

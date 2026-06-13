@@ -36,11 +36,13 @@ hardware:
   precision: "fp16" # fp16, bf16, fp32
 
 video:
-  font: "Arial"
-  font_size: 40
+  font: "Arial-Bold"
+  font_size: 44
   fps: 24
   crossfade_duration: 0.5
   output_format: "mp4"
+  clip_duration: 600 # Target duration in seconds (10 minutes)
+  motion_zoom_speed: 0.04
 
 prompts:
   style_modifier: "manhwa, webtoon, korean style, sharp lineart, high saturation, year 2024"

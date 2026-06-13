@@ -16,205 +16,151 @@ logger = logging.getLogger(__name__)
 
 class VideoRenderer:
     """
-    Layer 8: Video Production.
-    Assembles generated images and audio into a final mp4 video.
+    Layer 8: Video Production (Cinematic V4).
+    Assembles cinematic shots into Clips and finally a Master Movie.
     """
     def __init__(self, project_dir: str):
+        self.project_dir = project_dir
         self.output_dir = os.path.join(project_dir, 'output')
         self.videos_dir = os.path.join(self.output_dir, 'videos')
         os.makedirs(self.videos_dir, exist_ok=True)
         
-        self.prompts_path = os.path.join(self.output_dir, 'prompts.json')
+        self.clips_path = os.path.join(self.output_dir, 'clips.json')
         self.images_dir = os.path.join(self.output_dir, 'images')
         self.audio_dir = os.path.join(self.output_dir, 'audio')
         self.final_video_path = os.path.join(self.videos_dir, 'final_video.mp4')
         
     def render(self):
-        if not os.path.exists(self.prompts_path):
-            logger.error("prompts.json not found. Cannot render video.")
+        if not os.path.exists(self.clips_path):
+            logger.error("clips.json not found. Cannot render video.")
             return
 
-        with open(self.prompts_path, 'r', encoding='utf-8') as f:
-            prompts_data = json.load(f)
+        with open(self.clips_path, 'r', encoding='utf-8') as f:
+            clips_data = json.load(f)
 
-        batch_size = 50
-        batches = [prompts_data[i:i + batch_size] for i in range(0, len(prompts_data), batch_size)]
+        logger.info(f"Rendering {len(clips_data)} balanced cinematic clips...")
         
-        logger.info(f"Total scenes: {len(prompts_data)}. Rendering in {len(batches)} batches to prevent OOM.")
-        
-        for batch_idx, batch_prompts in enumerate(batches):
-            clips = []
-            logger.info(f"--- Starting Render Batch {batch_idx + 1}/{len(batches)} ---")
+        rendered_clips = []
+        for clip in clips_data:
+            clip_id = clip['clip_id']
+            shots = clip['shots']
+            logger.info(f"--- Starting Render: {clip_id} ({len(shots)} shots) ---")
             
-            for p in batch_prompts:
-                scene_id = p.get('scene_id')
-                img_path = os.path.join(self.images_dir, f"{scene_id}.png")
-                aud_path = os.path.join(self.audio_dir, f"{scene_id}.wav")
+            shot_clips = []
+            for shot in shots:
+                shot_id = shot.get('shot_id')
+                img_path = os.path.join(self.images_dir, f"{shot_id}.png")
+                aud_path = os.path.join(self.audio_dir, f"{shot_id}.wav")
                 
                 if not os.path.exists(img_path) or not os.path.exists(aud_path):
-                    logger.warning(f"Missing media for {scene_id}, skipping.")
+                    logger.warning(f"Missing media for {shot_id}, skipping.")
                     continue
                     
                 try:
-                    # Load Audio to determine duration
+                    # Audio and Duration
                     audio_clip = AudioFileClip(aud_path)
                     duration = audio_clip.duration
+                    if duration < 0.5: duration = 2.0
                     
-                    if duration < 1.0:
-                        duration = 3.0
-                        
-                    # Load Image
+                    # Image
                     img_clip = ImageClip(img_path).set_duration(duration)
                     
-                    # Layer 8.1: Ken Burns Effect (Dynamic Motion)
-                    # We implement a slow zoom to make it feel 'alive'
+                    # Layer 8.1: Ken Burns (Dynamic Motion)
                     zoom_direction = random.choice(['in', 'out'])
-                    zoom_speed = 0.05 # Slow cinematic zoom
-                    
+                    zoom_speed = 0.04
                     def zoom_effect(t):
                         if zoom_direction == 'in':
                             return 1 + (zoom_speed * t / duration)
                         else:
                             return 1 + zoom_speed - (zoom_speed * t / duration)
-                            
-                    # Move to center and zoom
                     img_clip = img_clip.resize(zoom_effect).set_position('center')
                     
+                    # Subtitles
                     try:
-                        # Layer 8.2: Cinematic Subtitles (Sentence-based splitting)
                         from moviepy.editor import TextClip, CompositeVideoClip, ColorClip
                         from core.config_manager import ConfigManager
+                        config = ConfigManager()
                         
-                        subtitle_text = p.get('metadata', {}).get('narration_text', '')
-                        
+                        subtitle_text = shot.get('narration_text', '')
                         if subtitle_text:
-                            # Split into sentences
+                            # Split into sentences for readability (max 2)
                             sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', subtitle_text) if s.strip()]
-                            
-                            # Group sentences (max 2 sentences, or 1 if the first is long)
                             groups = []
                             i = 0
                             while i < len(sentences):
                                 s1 = sentences[i]
-                                if i + 1 < len(sentences) and len(s1) < 80 and (len(s1) + len(sentences[i+1])) < 140:
+                                if i+1 < len(sentences) and len(s1) < 80 and (len(s1)+len(sentences[i+1])) < 140:
                                     groups.append(s1 + " " + sentences[i+1])
                                     i += 2
                                 else:
                                     groups.append(s1)
                                     i += 1
-                            
+                                    
                             num_groups = len(groups)
-                            group_duration = duration / num_groups
+                            group_dur = duration / num_groups
                             subtitle_clips = []
-                            
-                            for idx, group_text in enumerate(groups):
-                                start_t = idx * group_duration
+                            for idx, g_text in enumerate(groups):
+                                t_start = idx * group_dur
+                                txt = TextClip(
+                                    g_text, font=config.get('video.font', 'Arial-Bold'),
+                                    fontsize=config.get('video.font_size', 44), color='white',
+                                    method='caption', size=(img_clip.w * 0.8, None), align='center'
+                                ).set_duration(group_dur).set_start(t_start)
                                 
-                                # Enhanced TextClip with better readability
-                                txt_clip = TextClip(
-                                    group_text,
-                                    font=config.get('video.font', 'Arial-Bold'),
-                                    fontsize=config.get('video.font_size', 44),
-                                    color='white',
-                                    method='caption',
-                                    size=(img_clip.w * 0.8, None),
-                                    align='center'
-                                ).set_duration(group_duration).set_start(start_t)
+                                bg = ColorClip(size=(img_clip.w, txt.h + 40), color=(0,0,0)).set_opacity(0.4).set_duration(group_dur).set_start(t_start)
+                                bg = bg.set_position(('center', 'bottom'))
+                                txt = txt.set_position(('center', (img_clip.h - (txt.h + 40)) + 20))
+                                subtitle_clips.extend([bg, txt])
                                 
-                                # Add a semi-transparent dark bar behind the text
-                                bg_w = img_clip.w
-                                bg_h = txt_clip.h + 40
-                                txt_bg = ColorClip(size=(bg_w, bg_h), color=(0, 0, 0)).set_opacity(0.4).set_duration(group_duration).set_start(start_t)
-                                
-                                # Position background and text at bottom
-                                txt_bg = txt_bg.set_position(('center', 'bottom'))
-                                txt_clip = txt_clip.set_position(('center', (img_clip.h - bg_h) + (bg_h - txt_clip.h)/2))
-                                
-                                subtitle_clips.extend([txt_bg, txt_clip])
-                            
                             img_clip = CompositeVideoClip([img_clip] + subtitle_clips)
-                    except Exception as text_e:
-                        logger.warning(f"Failed to generate TextClip: {text_e}")
+                    except Exception as te:
+                        logger.warning(f"TextClip failed: {te}")
 
                     img_clip = img_clip.set_audio(audio_clip)
-                    
-                    if len(clips) > 0:
-                        import moviepy.video.fx.all as vfx
-                        from core.config_manager import ConfigManager
-                        config = ConfigManager()
-                        crossfade = config.get('video.crossfade_duration', 0.5)
-                        img_clip = img_clip.fx(vfx.fadein, crossfade)
-                        
-                    clips.append(img_clip)
-                    logger.info(f"Assembled {scene_id} - Duration: {duration}s")
+                    shot_clips.append(img_clip)
                 except Exception as e:
-                    logger.error(f"Failed to process {scene_id}: {e}")
+                    logger.error(f"Failed to process shot {shot_id}: {e}")
                     
-            if not clips:
-                logger.error(f"No valid clips assembled for batch {batch_idx + 1}.")
-                continue
-                
-            # Dynamic output naming
-            part_suffix = f"_part{batch_idx + 1}" if len(batches) > 1 else ""
-            batch_video_path = self.final_video_path.replace('.mp4', f'{part_suffix}.mp4')
+            if not shot_clips: continue
             
-            logger.info(f"Concatenating {len(clips)} clips for {batch_video_path}... This may take a while.")
-            
-            # Concatenate using compose method to support crossfades
-            final_video = concatenate_videoclips(clips, method="compose")
+            # Render individual clip
+            clip_video_path = os.path.join(self.videos_dir, f"{clip_id}.mp4")
+            final_clip = concatenate_videoclips(shot_clips, method="compose")
             
             try:
-                final_video.write_videofile(
-                    batch_video_path,
-                    fps=24,
-                    codec="libx264",
-                    audio_codec="aac",
-                    logger=None 
+                final_clip.write_videofile(
+                    clip_video_path,
+                    fps=24, codec="libx264", audio_codec="aac", logger=None 
                 )
-                logger.info(f"Batch {batch_idx + 1} rendered successfully: {batch_video_path}")
+                rendered_clips.append(f"{clip_id}.mp4")
             except Exception as e:
-                logger.error(f"Error rendering batch {batch_idx + 1}: {e}")
+                logger.error(f"Error rendering {clip_id}: {e}")
                 
-            # CRITICAL MEMORY CLEANUP
-            logger.info(f"Clearing RAM for batch {batch_idx + 1}...")
-            try:
-                final_video.close()
-                for c in clips:
-                    c.close()
-                
-                # V3 Upgrade: Aggressive garbage collection
-                gc.collect()
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-            except Exception as e:
-                logger.warning(f"Failed to close all clips: {e}")
+            # Cleanup RAM
+            final_clip.close()
+            for sc in shot_clips: sc.close()
+            gc.collect()
+            if torch.cuda.is_available(): torch.cuda.empty_cache()
 
-        # If we had multiple batches, concatenate them into one final video using FFmpeg
-        if len(batches) > 1:
-            logger.info("Stitching all batch videos together using FFmpeg (zero RAM consumption)...")
-            list_path = os.path.join(self.output_dir, 'concat_list.txt')
+        # Final Stitching
+        if len(rendered_clips) > 1:
+            logger.info("Stitching clips into Master Movie...")
+            list_path = os.path.join(self.videos_dir, 'concat_list.txt')
+            with open(list_path, 'w', encoding='utf-8') as f:
+                for rc in rendered_clips: f.write(f"file '{rc}'\n")
+            
             try:
-                with open(list_path, 'w', encoding='utf-8') as f:
-                    for i in range(len(batches)):
-                        part_file = f"final_video_part{i + 1}.mp4"
-                        # FFmpeg requires forward slashes or escaped paths in the text file
-                        f.write(f"file '{part_file}'\n")
-                
-                master_video_path = os.path.join(self.output_dir, 'final_video_master.mp4')
                 subprocess.run([
                     'ffmpeg', '-y', '-f', 'concat', '-safe', '0', 
-                    '-i', list_path, '-c', 'copy', master_video_path
-                ], check=True, cwd=self.output_dir, capture_output=True)
+                    '-i', 'concat_list.txt', '-c', 'copy', 'final_video_master.mp4'
+                ], check=True, cwd=self.videos_dir, capture_output=True)
                 
-                logger.info(f"Successfully stitched all parts into: {master_video_path}")
-                
-                # Cleanup the part files and list
                 os.remove(list_path)
-                for i in range(len(batches)):
-                    os.remove(os.path.join(self.output_dir, f"final_video_part{i + 1}.mp4"))
-                    
-                # Rename master to final_video.mp4
-                os.rename(master_video_path, self.final_video_path)
-                logger.info("Cleaned up batch files. Final video is ready!")
+                # Cleanup clips
+                for rc in rendered_clips: os.remove(os.path.join(self.videos_dir, rc))
+                os.rename(os.path.join(self.videos_dir, 'final_video_master.mp4'), self.final_video_path)
+                logger.info("Master Video ready!")
             except Exception as e:
-                logger.error(f"Failed to stitch video batches using FFmpeg: {e}")
+                logger.error(f"FFmpeg stitch failed: {e}")
+        elif rendered_clips:
+            os.rename(os.path.join(self.videos_dir, rendered_clips[0]), self.final_video_path)

@@ -231,141 +231,140 @@ def main():
             session.close()
 
     if args.stage in ['all', 'visual']:
-        logger.info("Running Visual Planning...")
-        from core.visual.planner import ScenePlanner
+        logger.info("Running Visual Planning (Cinematic V4)...")
+        from core.visual.planner import ScenePlanner, ShotDirector
         from core.visual.prompter import PromptGenerator
+        from core.visual.clip_builder import ClipBuilder
         
         memory_db = MemoryEngine(pm.project_dir)
-        planner = ScenePlanner(llm_adapter)
-        style_modifier = config_manager.get('prompts.style_modifier', 'Cinematic, high quality Korean Manhwa style, detailed line art, masterpiece, best quality')
-        prompter = PromptGenerator(memory_db, base_style=style_modifier)
+        showrunner = ScenePlanner(llm_adapter)
+        director = ShotDirector(llm_adapter)
+        prompter = PromptGenerator(memory_db)
+        clip_builder = ClipBuilder(target_duration=600.0) # 10-minute clips
         
         # Read translated output
         translated_files = [f for f in os.listdir(pm.dirs['output']) if f.startswith('translated_')]
-        all_prompts = []
+        all_cinematic_shots = []
         
         # We instantiate a dummy pipeline just to use its chunk_text utility
         text_chunker = TranslationPipeline(config={}, llm_adapter=None)
         
         for file in translated_files:
             text = pm.read_input(os.path.join(pm.dirs['output'], file))
-            chunks = text_chunker.chunk_text(text, max_words=500)
+            chunks = text_chunker.chunk_text(text, max_words=1000)
             
-            # Get a short file identifier to avoid collisions
-            file_name = os.path.basename(file)
-            file_id = file_name.replace('translated_', '').split('.')[0]
+            file_id = os.path.basename(file).replace('translated_', '').split('.')[0]
             
             current_sentence_index = 0
             for chunk_idx, chunk_data in enumerate(chunks):
-                visual_marker = os.path.join(pm.dirs['output'], f"visual_{file_name}_{chunk_idx}.json")
+                visual_marker = os.path.join(pm.dirs['output'], f"v4_visual_{file_id}_{chunk_idx}.json")
                 
                 if os.path.exists(visual_marker):
-                    logger.info(f"Loading cached Visual Plan for Chunk {chunk_idx + 1}/{len(chunks)}")
+                    logger.info(f"Loading cached Cinematic Plan for Chunk {chunk_idx + 1}")
                     with open(visual_marker, 'r', encoding='utf-8') as f:
-                        cached_data = json.load(f)
-
-                    # Force unique IDs even for cached data to fix previous collision issues
-                    for cp in cached_data:
-                        if f"{file_id}_C{chunk_idx}_" not in cp['scene_id']:
-                            old_id = cp['scene_id']
-                            cp['scene_id'] = f"{file_id}_C{chunk_idx}_{old_id}"
-                        chunk_prompts.append(cp)
-                    
-                    all_prompts.extend(chunk_prompts)
-                    # Update sentence index even for cached chunks
-                    chunk_sentences = len(chunk_data.get("sentences", []))
-                    current_sentence_index += chunk_sentences
+                        chunk_shots = json.load(f)
+                    all_cinematic_shots.extend(chunk_shots)
+                    current_sentence_index += len(chunk_data.get("sentences", []))
                     continue
 
                 chunk_text = " ".join([s["text"] for s in chunk_data["sentences"]])
-                logger.info(f"Visual Planning for Chunk {chunk_idx + 1}/{len(chunks)} ({chunk_data['word_count']} words)")
+                logger.info(f"[Showrunner] Extracting Narrative Scenes from Chunk {chunk_idx + 1}...")
                 
-                scenes = planner.plan_scenes(chunk_text, start_index=current_sentence_index)
-                current_sentence_index += len(chunk_data["sentences"])
+                narrative_scenes = showrunner.extract_narrative_scenes(chunk_text, start_index=current_sentence_index)
                 
-                for scene_idx, scene in enumerate(scenes):
-                    # Ensure scene_id is unique across chunks and files
-                    original_id = scene.get('scene_id', f'SC{scene_idx:03d}')
-                    new_id = f"{file_id}_C{chunk_idx}_{original_id}"
-                    scene['scene_id'] = new_id
+                chunk_shots = []
+                for scene in narrative_scenes:
+                    # Extract text belonging to this scene
+                    scene_sentences = scene.get('source_sentences', [])
+                    chunk_relative_sentences = [idx for idx in scene_sentences]
                     
-                    prompt_data = prompter.generate_prompt_for_scene(scene)
-                    chunk_prompts.append(prompt_data)
-                    all_prompts.append(prompt_data)
-                    logger.info(f"Generated prompt for {new_id}")
-                
+                    scene_text_list = []
+                    for s_idx in chunk_relative_sentences:
+                        if 0 <= s_idx < len(chunk_data["sentences"]):
+                            scene_text_list.append(chunk_data["sentences"][s_idx]["text"])
+                    
+                    scene_text = " ".join(scene_text_list)
+                    
+                    logger.info(f"[Director] Breaking Scene {scene['scene_id']} into Shots (Complexity: {scene['complexity']})...")
+                    raw_shots = director.direct_shots(scene, scene_text)
+                    
+                    for shot in raw_shots:
+                        # Enrich shot with prompt and global unique ID
+                        shot['shot_id'] = f"{file_id}_C{chunk_idx}_{shot['shot_id']}"
+                        enriched_shot = prompter.generate_prompt_for_shot(shot, scene)
+                        chunk_shots.append(enriched_shot)
+                        all_cinematic_shots.append(enriched_shot)
+
+                current_sentence_index += len(chunk_data["sentences"])
                 with open(visual_marker, 'w', encoding='utf-8') as f:
-                    json.dump(chunk_prompts, f, indent=2)
+                    json.dump(chunk_shots, f, indent=2)
                 
-        # Save aggregated prompts
-        pm.save_output("prompts.json", json.dumps(all_prompts, indent=2))
-        logger.info("Saved all aggregated visual prompts to prompts.json")
+        # Build Clips (Rendering Playlist)
+        final_clips = clip_builder.build_clips(all_cinematic_shots)
+        pm.save_output("clips.json", json.dumps(final_clips, indent=2))
+        pm.save_output("prompts.json", json.dumps(all_cinematic_shots, indent=2)) # Legacy fallback
+        logger.info("V4 Cinematic Storyboard successfully generated and saved to clips.json")
 
     if args.stage in ['all', 'generation']:
-        logger.info("Running Image Generation...")
+        logger.info("Running Image Generation (Cinematic V4)...")
         from models.image_adapter import LocalImageAdapter
         
         image_adapter = LocalImageAdapter()
-        prompts_path = os.path.join(pm.dirs['output'], 'prompts.json')
+        clips_path = os.path.join(pm.dirs['output'], 'clips.json')
         images_dir = os.path.join(pm.dirs['output'], 'images')
         os.makedirs(images_dir, exist_ok=True)
         
-        if os.path.exists(prompts_path):
-            with open(prompts_path, 'r', encoding='utf-8') as f:
-                prompts_data = json.load(f)
+        if os.path.exists(clips_path):
+            with open(clips_path, 'r', encoding='utf-8') as f:
+                clips_data = json.load(f)
                 
-            for p in prompts_data:
-                scene_id = p.get('scene_id')
-                prompt = p.get('prompt')
-                negative_prompt = p.get('negative_prompt', '')
-                ref_images = p.get('reference_images', [])
-                gen_params = p.get('generation_params', {})
-                prompt_hash = p.get('prompt_hash')
-                
-                output_path = os.path.join(images_dir, f"{scene_id}.png")
-                
-                # Check Prompt Cache (V3 Upgrade)
-                cached_hash = pm.get_checkpoint_value('prompt_cache', scene_id)
-                if os.path.exists(output_path) and cached_hash == prompt_hash:
-                    logger.info(f"Image for {scene_id} exists and prompt hash matches. Skipping generation.")
-                    continue
-                elif os.path.exists(output_path):
-                    logger.info(f"Image for {scene_id} exists but prompt hash changed. Regenerating.")
+            for clip in clips_data:
+                for p in clip['shots']:
+                    shot_id = p.get('shot_id')
+                    prompt = p.get('prompt')
+                    negative_prompt = p.get('negative_prompt', '')
+                    ref_images = p.get('reference_images', [])
+                    gen_params = p.get('generation_params', {})
+                    prompt_hash = p.get('prompt_hash')
                     
-                image_adapter.generate_image(prompt, output_path, negative_prompt, reference_image_paths=ref_images, generation_params=gen_params)
-                
-                # Update Cache
-                pm.save_checkpoint('prompt_cache', prompt_hash, sub_key=scene_id)
+                    output_path = os.path.join(images_dir, f"{shot_id}.png")
+                    
+                    # Check Prompt Cache (V3 Upgrade)
+                    cached_hash = pm.get_checkpoint_value('prompt_cache', shot_id)
+                    if os.path.exists(output_path) and cached_hash == prompt_hash:
+                        logger.info(f"Shot {shot_id} exists and hash matches. Skipping.")
+                        continue
+                    
+                    image_adapter.generate_image(prompt, output_path, negative_prompt, reference_image_paths=ref_images, generation_params=gen_params)
+                    pm.save_checkpoint('prompt_cache', prompt_hash, sub_key=shot_id)
         else:
-            logger.warning("No prompts.json found. Run the visual stage first.")
+            logger.warning("No clips.json found. Run visual stage first.")
             
     if args.stage in ['all', 'audio']:
-        logger.info("Running Audio Generation...")
+        logger.info("Running Audio Generation (Cinematic V4)...")
         from models.audio_adapter import LocalAudioAdapter
-        import json
         
         audio_adapter = LocalAudioAdapter()
-        prompts_path = os.path.join(pm.dirs['output'], 'prompts.json')
+        clips_path = os.path.join(pm.dirs['output'], 'clips.json')
         audio_dir = os.path.join(pm.dirs['output'], 'audio')
         os.makedirs(audio_dir, exist_ok=True)
         
-        if os.path.exists(prompts_path):
-            with open(prompts_path, 'r', encoding='utf-8') as f:
-                prompts_data = json.load(f)
+        if os.path.exists(clips_path):
+            with open(clips_path, 'r', encoding='utf-8') as f:
+                clips_data = json.load(f)
                 
-            for p in prompts_data:
-                scene_id = p.get('scene_id')
-                # Read the exact script dialogue for subtitles/audio
-                narration_text = p.get('metadata', {}).get('narration_text', 'Silence.')
-                output_path = os.path.join(audio_dir, f"{scene_id}.wav")
-                
-                if os.path.exists(output_path):
-                    logger.info(f"Audio for {scene_id} already exists. Skipping generation.")
-                    continue
+            for clip in clips_data:
+                for p in clip['shots']:
+                    shot_id = p.get('shot_id')
+                    narration_text = p.get('narration_text', 'Silence.')
+                    output_path = os.path.join(audio_dir, f"{shot_id}.wav")
                     
-                audio_adapter.generate_audio(narration_text, output_path)
+                    if os.path.exists(output_path):
+                        continue
+                        
+                    audio_adapter.generate_audio(narration_text, output_path)
         else:
-            logger.warning("No prompts.json found. Run the visual stage first.")
+            logger.warning("No clips.json found.")
 
     if args.stage in ['all', 'video']:
         logger.info("Running Video Production...")
