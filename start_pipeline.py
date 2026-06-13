@@ -40,24 +40,38 @@ def main():
     else:
         print("Skipping apt-get (not on a Debian/Ubuntu system).")
 
-    # 3. Local Server Boot
-    print("\n[3/5] Starting Ollama Backend...")
-    try:
-        # Check if Ollama is already running
-        subprocess.run(["curl", "-s", "-f", "http://localhost:11434/"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-        print("Ollama server is already running.")
-    except subprocess.CalledProcessError:
-        print("Booting detached Ollama server...")
-        subprocess.Popen(
-            ["ollama", "serve"], 
-            stdout=subprocess.DEVNULL, 
-            stderr=subprocess.DEVNULL,
-            start_new_session=True
-        )
-        time.sleep(5) # Wait for startup
-        
-    print("Ensuring qwen2.5:7b is pulled...")
-    subprocess.run("ollama pull qwen2.5:7b", shell=True)
+    # 3. Local Server Boot (Only if using local model)
+    print("\n[3/5] Checking LLM Provider...")
+    import yaml
+    config_path = "config/default.yaml"
+    use_local_llm = True
+    if os.path.exists(config_path):
+        with open(config_path, "r", encoding="utf-8") as f:
+            config_data = yaml.safe_load(f)
+            provider = config_data.get("models", {}).get("translation", {}).get("primary", {}).get("provider", "local")
+            if provider != "local" and provider != "ollama":
+                use_local_llm = False
+                
+    if use_local_llm:
+        print("Starting Ollama Backend for local generation...")
+        try:
+            # Check if Ollama is already running
+            subprocess.run(["curl", "-s", "-f", "http://localhost:11434/"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+            print("Ollama server is already running.")
+        except subprocess.CalledProcessError:
+            print("Booting detached Ollama server...")
+            subprocess.Popen(
+                ["ollama", "serve"], 
+                stdout=subprocess.DEVNULL, 
+                stderr=subprocess.DEVNULL,
+                start_new_session=True
+            )
+            time.sleep(5) # Wait for startup
+            
+        print("Ensuring qwen2.5:7b is pulled...")
+        subprocess.run("ollama pull qwen2.5:7b", shell=True)
+    else:
+        print(f"Online LLM provider ({provider}) detected. Skipping Ollama boot.")
 
     import shutil
 
