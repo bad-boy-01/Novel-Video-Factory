@@ -109,6 +109,11 @@ class OnlineLLMAdapter:
         }
         
         if self.provider == "gemini":
+            import time
+            # Gemini Free Tier limits to 15 Requests Per Minute (1 every 4 seconds)
+            # Sleep for 4.1 seconds to guarantee we perfectly bypass the limit without ever hitting 429
+            time.sleep(4.1)
+            
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {"temperature": temperature}
