@@ -1,4 +1,8 @@
 import logging
+import os
+import re
+import random
+import hashlib
 from typing import Dict, List
 
 logger = logging.getLogger(__name__)
@@ -13,7 +17,6 @@ class PromptGenerator:
         self.base_style = base_style
         
         # Inject Dynamic World Style if it exists
-        import os
         project_dir = self.memory_engine.project_dir if hasattr(self.memory_engine, 'project_dir') else ""
         if project_dir:
             world_style_path = os.path.join(project_dir, 'memory', 'world_style.txt')
@@ -31,7 +34,6 @@ class PromptGenerator:
         characters_present = scene.get("characters_present", [])
         dna_descriptions = []
         
-        import os
         project_dir = self.memory_engine.project_dir if hasattr(self.memory_engine, 'project_dir') else ""
         ref_images = []
         
@@ -63,7 +65,6 @@ class PromptGenerator:
                     
                 # Look for reference image
                 if project_dir:
-                    import re
                     safe_name = re.sub(r'[\\/*?:"<>|]', "", char_name).strip().replace(" ", "_")
                     img_path = os.path.join(project_dir, 'memory', 'character_sheets', f"{safe_name}.png")
                     
@@ -113,8 +114,6 @@ class PromptGenerator:
         negative_prompt = "lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
         
         # V3 Upgrade: Persistent Seeds and Prompt Hashing
-        import random
-        import hashlib
         seed = scene.get('seed', random.randint(0, 2147483647))
         prompt_hash = hashlib.sha256((full_prompt + negative_prompt).encode('utf-8')).hexdigest()
         

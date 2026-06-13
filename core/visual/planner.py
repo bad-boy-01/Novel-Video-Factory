@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,6 @@ class ScenePlanner:
         response = self.llm.generate(text_chunk, system_prompt=system_prompt, temperature=0.3)
         
         try:
-            import re
             match = re.search(r'(\[.*\])', response, re.DOTALL)
             if match:
                 response = match.group(1)
@@ -43,7 +43,6 @@ class ScenePlanner:
             data = json.loads(response)
             if isinstance(data, list):
                 # Verify coverage (Zero Information Loss check)
-                import re
                 sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text_chunk) if s.strip()]
                 covered_indices = set()
                 for scene in data:

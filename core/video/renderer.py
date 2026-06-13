@@ -1,10 +1,15 @@
 import os
 import logging
+import json
+import random
+import re
+import gc
+import torch
+import subprocess
 
 os.environ["SDL_AUDIODRIVER"] = "dummy"
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 
-import json
 from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
 
 logger = logging.getLogger(__name__)
@@ -63,7 +68,6 @@ class VideoRenderer:
                     
                     # Layer 8.1: Ken Burns Effect (Dynamic Motion)
                     # We implement a slow zoom to make it feel 'alive'
-                    import random
                     zoom_direction = random.choice(['in', 'out'])
                     zoom_speed = 0.05 # Slow cinematic zoom
                     
@@ -80,8 +84,6 @@ class VideoRenderer:
                         # Layer 8.2: Cinematic Subtitles (Sentence-based splitting)
                         from moviepy.editor import TextClip, CompositeVideoClip, ColorClip
                         from core.config_manager import ConfigManager
-                        import re
-                        config = ConfigManager()
                         
                         subtitle_text = p.get('metadata', {}).get('narration_text', '')
                         
@@ -181,8 +183,6 @@ class VideoRenderer:
                     c.close()
                 
                 # V3 Upgrade: Aggressive garbage collection
-                import gc
-                import torch
                 gc.collect()
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
@@ -192,7 +192,6 @@ class VideoRenderer:
         # If we had multiple batches, concatenate them into one final video using FFmpeg
         if len(batches) > 1:
             logger.info("Stitching all batch videos together using FFmpeg (zero RAM consumption)...")
-            import subprocess
             list_path = os.path.join(self.output_dir, 'concat_list.txt')
             try:
                 with open(list_path, 'w', encoding='utf-8') as f:

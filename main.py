@@ -2,6 +2,12 @@ import argparse
 import sys
 import logging
 import os
+import re
+import json
+import shutil
+import uuid
+import subprocess
+import datetime
 
 from core.project_manager import ProjectManager
 from core.translation.pipeline import TranslationPipeline
@@ -37,7 +43,6 @@ def main():
         if not os.path.exists(args.input):
             logger.error(f"Input file not found: {args.input}")
             sys.exit(1)
-        import shutil
         dest = os.path.join(pm.dirs['input'], os.path.basename(args.input))
         shutil.copy(args.input, dest)
         logger.info(f"Imported script {args.input} to {dest}")
@@ -86,7 +91,6 @@ def main():
 
     if args.stage in ['all', 'memory']:
         logger.info("Running Memory Engine...")
-        import uuid
         
         extractor = MemoryExtractor(llm_adapter)
         memory_db = MemoryEngine(pm.project_dir)
@@ -185,7 +189,6 @@ def main():
             characters = session.query(Character).all()
             for char in characters:
                 # Sanitize name for filename to make it human readable
-                import re
                 safe_name = re.sub(r'[\\/*?:"<>|]', "", char.canonical_name).strip().replace(" ", "_")
                 img_path = os.path.join(chars_dir, f"{safe_name}.png")
                 
@@ -256,12 +259,11 @@ def main():
             for chunk_idx, chunk_data in enumerate(chunks):
                 visual_marker = os.path.join(pm.dirs['output'], f"visual_{file_name}_{chunk_idx}.json")
                 
-                chunk_prompts = []
                 if os.path.exists(visual_marker):
                     logger.info(f"Loading cached Visual Plan for Chunk {chunk_idx + 1}/{len(chunks)}")
                     with open(visual_marker, 'r', encoding='utf-8') as f:
                         cached_data = json.load(f)
-                    
+
                     # Force unique IDs even for cached data to fix previous collision issues
                     for cp in cached_data:
                         if f"{file_id}_C{chunk_idx}_" not in cp['scene_id']:
@@ -296,14 +298,12 @@ def main():
                     json.dump(chunk_prompts, f, indent=2)
                 
         # Save aggregated prompts
-        import json
         pm.save_output("prompts.json", json.dumps(all_prompts, indent=2))
         logger.info("Saved all aggregated visual prompts to prompts.json")
 
     if args.stage in ['all', 'generation']:
         logger.info("Running Image Generation...")
         from models.image_adapter import LocalImageAdapter
-        import json
         
         image_adapter = LocalImageAdapter()
         prompts_path = os.path.join(pm.dirs['output'], 'prompts.json')
@@ -388,10 +388,6 @@ def main():
 
     if args.stage in ['all', 'export']:
         logger.info("Running Export Engine...")
-        import shutil
-        import json
-        import re
-        import subprocess
         
         # 1. Read SEO metadata to get the clickbait title
         title = "Export"

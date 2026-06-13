@@ -1,6 +1,8 @@
 import logging
 import os
 import time
+import gc
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,6 @@ class LocalImageAdapter:
     def _init_pipeline(self):
         """Attempts to load the diffusers pipeline. Falls back to mock on failure."""
         try:
-            import torch
             from diffusers import AutoPipelineForText2Image
             
             self.pipeline = AutoPipelineForText2Image.from_pretrained(
@@ -45,8 +46,6 @@ class LocalImageAdapter:
         Encodes the prompt into embeddings, supporting long prompts (> 77 tokens)
         by chunking them and concatenating the embeddings.
         """
-        import torch
-        
         # SDXL has two text encoders
         # text_encoder (CLIP-L) and text_encoder_2 (OpenCLIP-G)
         device = self.pipeline.device
@@ -132,7 +131,6 @@ class LocalImageAdapter:
             width = generation_params.get("width", 1280)
             height = generation_params.get("height", 720)
             
-            import torch
             generator = torch.Generator(self.pipeline.device).manual_seed(seed)
             
             kwargs = {
@@ -174,8 +172,6 @@ class LocalImageAdapter:
             
             # V3 Upgrade: Kaggle Optimization (Step 16)
             # Aggressive memory cleanup to prevent OOM on long runs
-            import gc
-            import torch
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()

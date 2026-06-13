@@ -43,7 +43,6 @@ class MemoryExtractor:
 
         try:
             # Robust JSON extraction from markdown wrappers
-            import re
             match = re.search(r'(\{.*\})', response, re.DOTALL)
             if match:
                 response = match.group(1)
