@@ -43,8 +43,8 @@ video:
   output_format: "mp4"
 
 prompts:
-  style_modifier: "manhwa, webtoon, korean style, thick outlines, vibrant colors, sharp lineart, high saturation, year 2024"
-  negative_prompt: "lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry"
+  style_modifier: "manhwa, webtoon, korean style, sharp lineart, high saturation"
+  negative_prompt: "lowres, bad anatomy, error, worst quality, low quality, blurry"
 
 system:
   cache_enabled: true

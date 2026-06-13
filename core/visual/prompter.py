@@ -77,17 +77,18 @@ class PromptGenerator:
         
         character_prompt = ", ".join(dna_descriptions)
         
-        # Quality and Style Tags for Animagine XL 4.0 Manhwa style
-        quality_tags = "masterpiece, high score, great score, absurdres"
-        wuxia_details = "long hair, traditional chinese clothing, ancient chinese architecture"
+        # Move Manhwa style tags to the front to avoid truncation
+        manhwa_core = "manhwa, webtoon, korean style, thick outlines"
+        quality_tags = "masterpiece, high score, great score"
         
-        # Build Structured Prompt: Subject -> Details -> Style -> Quality
-        full_prompt = f"{character_prompt}, {camera}, {action_desc}, {lighting}, {wuxia_details}, rating_safe, {self.base_style}, {quality_tags}"
+        # Build Structured Prompt: Style -> Subject -> Action -> Quality
+        # This ensures the core style is NEVER truncated
+        full_prompt = f"{manhwa_core}, {character_prompt}, {camera}, {action_desc}, {lighting}, ancient chinese architecture, {quality_tags}, rating_safe"
         
         return {
             "scene_id": scene.get("scene_id"),
             "prompt": full_prompt,
-            "negative_prompt": "lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry",
+            "negative_prompt": "lowres, bad anatomy, bad hands, text, error, worst quality, low quality, signature, watermark, blurry",
             "metadata": scene,
             "reference_images": ref_images
         }

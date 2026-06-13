@@ -181,12 +181,15 @@ def main():
                         # Extract age if possible or just use the DNA string
                         pass 
                     
-                    # Better structure for Animagine XL 4.0 Manhwa style
-                    # Structure: Subject -> Details -> Style -> Quality
-                    quality_tags = "masterpiece, high score, great score, absurdres"
+                    # Move style tags to the front to avoid 77-token truncation
+                    quality_tags = "masterpiece, high score, great score"
+                    manhwa_core = "manhwa, webtoon, korean style, thick outlines"
                     
-                    prompt = f"{gender_tag}, solo, {dna_str}, long hair, traditional chinese clothing, cinematic portrait, detailed background, looking at viewer, rating_safe, {style_modifier}, {quality_tags}"
-                    negative = config_manager.get('prompts.negative_prompt', 'lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry')
+                    # Truncate DNA string if it's too long
+                    dna_short = dna_str[:120] if len(dna_str) > 120 else dna_str
+                    
+                    prompt = f"{manhwa_core}, {gender_tag}, solo, {dna_short}, traditional chinese clothing, cinematic portrait, {quality_tags}, rating_safe"
+                    negative = config_manager.get('prompts.negative_prompt', 'lowres, bad anatomy, bad hands, text, error, worst quality, low quality, signature, watermark, blurry')
                     image_adapter.generate_image(prompt, img_path, negative_prompt=negative)
                 else:
                     logger.info(f"Reference Sheet already exists for {char.canonical_name}, skipping.")
