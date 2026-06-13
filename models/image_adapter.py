@@ -46,25 +46,24 @@ class LocalImageAdapter:
         Encodes the prompt into embeddings, supporting long prompts (> 77 tokens)
         by chunking them and concatenating the embeddings.
         """
-        # SDXL has two text encoders
-        # text_encoder (CLIP-L) and text_encoder_2 (OpenCLIP-G)
+        # V3 Upgrade: Reliable device detection for CPU Offloading
         device = self.pipeline.device
+        if torch.cuda.is_available() and device.type == 'cpu':
+            device = torch.device('cuda:0')
         
         def get_embeds(p, encoder, tokenizer):
+            # Move tokens to device
             input_ids = tokenizer(
                 p, padding="max_length", max_length=tokenizer.model_max_length, truncation=False, return_tensors="pt"
             ).input_ids.to(device)
             
             # If prompt is longer than 77 tokens, we chunk it
             if input_ids.shape[1] > tokenizer.model_max_length:
-                # Remove BOS/EOS and chunk
-                # tokenizer.model_max_length is usually 77
                 max_length = tokenizer.model_max_length
-                # Simple chunking logic:
                 chunks = []
                 for i in range(0, input_ids.shape[1], max_length - 2):
                     chunk = input_ids[:, i:i + max_length - 2]
-                    # Add BOS and EOS
+                    # Ensure all new tensors are on the same device
                     bos = torch.tensor([[tokenizer.bos_token_id]], device=device)
                     eos = torch.tensor([[tokenizer.eos_token_id]], device=device)
                     chunk = torch.cat([bos, chunk, eos], dim=1)
@@ -78,8 +77,9 @@ class LocalImageAdapter:
                 all_embeds = []
                 all_pooled = []
                 for chunk in chunks:
+                    # Encoder might be wrapped in accelerate hooks, ensure it's called correctly
                     output = encoder(chunk, output_hidden_states=True)
-                    all_embeds.append(output.hidden_states[-2]) # Penultimate layer
+                    all_embeds.append(output.hidden_states[-2])
                     if hasattr(output, 'text_embeds'):
                         all_pooled.append(output.text_embeds)
                 
