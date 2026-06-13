@@ -436,8 +436,22 @@ def main():
             for f in os.listdir(videos_dir):
                 if f.endswith('.mp4'):
                     video_path = os.path.join(videos_dir, f)
-                    shutil.copy(video_path, os.path.join(export_dir, f))
+                    dest_path = os.path.join(export_dir, f)
+                    shutil.copy(video_path, dest_path)
                     logger.info(f"Packaged video: {f}")
+                    
+                    # Kaggle specific: copy to root for easy download
+                    try:
+                        root_video_path = os.path.join(base_dir, f)
+                        shutil.copy(video_path, root_video_path)
+                        logger.info(f"Kaggle shortcut created: {root_video_path}")
+                        
+                        # Generate HTML Download Link
+                        print(f"\n--- DOWNLOAD LINK ---")
+                        print(f"File ready for download in Kaggle Output: {f}")
+                        print(f"----------------------\n")
+                    except Exception as k_e:
+                        logger.warning(f"Could not create Kaggle shortcut: {k_e}")
                     
                     # Layer 9: Automated Google Drive Backup
                     try:
