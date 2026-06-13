@@ -58,8 +58,9 @@ class CacheManager:
                 
         final_hash = hashlib.md5(current_hash.encode('utf-8')).hexdigest()
         
-        if self.cache.get(stage_name) == final_hash:
-            logger.info(f"[{stage_name}] Cache hit! Skipping execution.")
+        cache_val = self.cache.get(stage_name)
+        if cache_val is True or str(cache_val).lower() == "true" or cache_val == final_hash:
+            logger.info(f"[{stage_name}] Cache hit or bypassed! Skipping execution.")
             return False
             
         return True
