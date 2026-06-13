@@ -142,7 +142,11 @@ def main():
             from core.memory.database import Character
             characters = session.query(Character).all()
             for char in characters:
-                img_path = os.path.join(chars_dir, f"{char.id}.png")
+                # Sanitize name for filename
+                import re
+                safe_name = re.sub(r'[^a-zA-Z0-9_\- ]', '', char.canonical_name).strip().replace(' ', '_')
+                img_path = os.path.join(chars_dir, f"{safe_name}.png")
+                
                 if not os.path.exists(img_path):
                     logger.info(f"Generating Character Reference Sheet for {char.canonical_name}...")
                     dna_tags = []
@@ -154,7 +158,7 @@ def main():
                     # Deduce gender for the model
                     dna_lower = dna_str.lower()
                     name_lower = char.canonical_name.lower()
-                    if any(w in dna_lower or w in name_lower for w in ["girl", "woman", "female", "sister", "mother", "wife", "chunni", "xiue", "mei", "her ", "she "]):
+                    if any(w in dna_lower or w in name_lower for w in ["girl", "woman", "female", "sister", "mother", "wife", "chunni", "xiue", "mei", "her ", "she ", "madam", "dress", "aunt", "lady"]):
                         gender_tag = "1girl"
                     else:
                         gender_tag = "1boy" # Defaults to boy for wuxia/manhwa protagonists unless female keywords found
