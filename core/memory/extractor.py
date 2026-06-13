@@ -49,15 +49,28 @@ class MemoryExtractor:
                 
             data = json.loads(response)
             if isinstance(data, dict):
+                # V3 Upgrade: Robust Data Normalization
+                # Ensure every entry is a dictionary to prevent AttributeError
+                def normalize(items, keys):
+                    results = []
+                    for item in items:
+                        if isinstance(item, dict):
+                            results.append(item)
+                        elif isinstance(item, str):
+                            # Convert string name to basic object
+                            results.append({keys[0]: item})
+                    return results
+
                 return {
-                    "characters": data.get("characters", []),
-                    "locations": data.get("locations", []),
-                    "world_concepts": data.get("world_concepts", [])
+                    "characters": normalize(data.get("characters", []), ["canonical_name"]),
+                    "locations": normalize(data.get("locations", []), ["canonical_name", "description"]),
+                    "world_concepts": normalize(data.get("world_concepts", []), ["name", "description"]),
+                    "relationships": normalize(data.get("relationships", []), ["char1", "char2"])
                 }
-            return {"characters": [], "locations": [], "world_concepts": []}
+            return {"characters": [], "locations": [], "world_concepts": [], "relationships": []}
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse LLM combined extraction response: {e}\nResponse: {response}")
-            return {"characters": [], "locations": [], "world_concepts": []}
+            return {"characters": [], "locations": [], "world_concepts": [], "relationships": []}
 
     def extract_world_style(self, text_chunk: str) -> str:
         """
