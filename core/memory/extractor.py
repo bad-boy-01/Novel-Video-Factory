@@ -37,16 +37,21 @@ class MemoryExtractor:
         )
         
         response = self.llm.generate(text_chunk, system_prompt=system_prompt, temperature=0.1)
-        
+
         try:
             # Robust JSON extraction from markdown wrappers
             import re
             match = re.search(r'(\{.*\})', response, re.DOTALL)
             if match:
                 response = match.group(1)
-                
+
+            # V3 Upgrade: Aggressive JSON Cleaning
+            # 1. Remove trailing commas before closing braces/brackets
             response = re.sub(r',\s*([\]}])', r'\1', response)
-                
+            # 2. Fix unescaped double quotes inside values (common LLM error)
+            # This is a heuristic: replaces " with ' if it's not a JSON key/value delimiter
+            # But safer to just try and catch the specific error
+
             data = json.loads(response)
             if isinstance(data, dict):
                 # V3 Upgrade: Robust Data Normalization
@@ -69,8 +74,24 @@ class MemoryExtractor:
                 }
             return {"characters": [], "locations": [], "world_concepts": [], "relationships": []}
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM combined extraction response: {e}\nResponse: {response}")
-            return {"characters": [], "locations": [], "world_concepts": [], "relationships": []}
+            # Secondary recovery: try to fix common quote issues
+            try:
+                # Replace internal double quotes that aren't delimiters
+                # This is a bit risky but can save a failed run
+                cleaned_response = re.sub(r'(?<!:)\s*"(?![:,\]}])', "'", response)
+                cleaned_response = re.sub(r'(?<![\[{,])\s*"(?!:)', "'", cleaned_response)
+                data = json.loads(cleaned_response)
+                logger.info("Successfully repaired malformed JSON from LLM.")
+                # (Normalization logic repeat...)
+                return {
+                    "characters": [{"canonical_name": c} if isinstance(c, str) else c for c in data.get("characters", [])],
+                    "locations": [{"canonical_name": l} if isinstance(l, str) else l for l in data.get("locations", [])],
+                    "world_concepts": [{"name": w} if isinstance(w, str) else w for w in data.get("world_concepts", [])],
+                    "relationships": data.get("relationships", [])
+                }
+            except Exception:
+                logger.error(f"Failed to parse LLM combined extraction response: {e}\nResponse: {response}")
+                return {"characters": [], "locations": [], "world_concepts": [], "relationships": []}
 
     def extract_world_style(self, text_chunk: str) -> str:
         """
