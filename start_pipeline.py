@@ -22,15 +22,20 @@ def main():
     os.makedirs(project_output_dir, exist_ok=True)
     print(f"Verified directories: {project_input_dir}, {project_output_dir}")
 
-    # 2. System Dependency Management (Only runs if running on Linux/Kaggle)
-    print("\n[2/5] Updating System Dependencies...")
+    # 2. System Dependency Management (Only runs if running on Linux/Kaggle and not already installed)
+    print("\n[2/5] Checking System Dependencies...")
+    import shutil
     if os.path.exists("/usr/bin/apt-get"):
-        try:
-            subprocess.run("apt-get update && apt-get install -y espeak-ng imagemagick zstd", shell=True, check=True)
-            subprocess.run("curl -fsSL https://ollama.com/install.sh | sh", shell=True, check=True)
-            print("System dependencies and Ollama installed.")
-        except subprocess.CalledProcessError as e:
-            print(f"Warning: Failed to install system dependencies (are you root?): {e}")
+        if not shutil.which("ollama"):
+            print("Installing Ollama and dependencies...")
+            try:
+                subprocess.run("apt-get update && apt-get install -y espeak-ng imagemagick zstd", shell=True, check=True)
+                subprocess.run("curl -fsSL https://ollama.com/install.sh | sh", shell=True, check=True)
+                print("System dependencies and Ollama installed.")
+            except subprocess.CalledProcessError as e:
+                print(f"Warning: Failed to install system dependencies (are you root?): {e}")
+        else:
+            print("Ollama is already installed. Skipping dependency installation.")
     else:
         print("Skipping apt-get (not on a Debian/Ubuntu system).")
 
