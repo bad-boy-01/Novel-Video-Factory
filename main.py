@@ -237,7 +237,6 @@ def main():
                     year_tag = "year 2024"
                     
                     # Generate a unique but deterministic seed for this character
-                    import hashlib
                     char_seed = int(hashlib.sha256(char.canonical_name.encode('utf-8')).hexdigest(), 16) % 2147483647
                     
                     # Prioritize unique features at the FRONT of the prompt
