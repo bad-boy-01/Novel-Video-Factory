@@ -261,7 +261,7 @@ def main():
         
         for file in translated_files:
             text = pm.read_input(os.path.join(pm.dirs['output'], file))
-            chunks = text_chunker.chunk_text(text, max_words=1000)
+            chunks = text_chunker.chunk_text(text, max_words=500)
             
             file_id = os.path.basename(file).replace('translated_', '').split('.')[0]
             
