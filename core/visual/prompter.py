@@ -84,7 +84,7 @@ class PromptGenerator:
         
         # Build Structured Prompt: Style -> Subject -> Action -> Quality
         # This ensures the core style and atmospheric lighting are prioritized
-        full_prompt = f"{manhwa_core}, {character_prompt}, {camera}, {action_desc}, {lighting}, {cinematic_tags}, ancient chinese architecture, {quality_tags}, rating_safe"
+        full_prompt = f"{manhwa_core}, {character_prompt}, {camera}, {action_desc}, {lighting}, {cinematic_tags}, ancient architecture, {quality_tags}, rating_safe"
         
         return {
             "scene_id": scene.get("scene_id"),

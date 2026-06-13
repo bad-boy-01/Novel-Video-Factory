@@ -32,7 +32,8 @@ class MemoryExtractor:
             "6. DO NOT extract locations or objects as characters (e.g., 'Village', 'Sword' are NOT characters).\n\n"
             "EXAMPLE OUTPUT FORMAT:\n"
             "{\n"
-            "  \"characters\": [{\"canonical_name\": \"Xu Changshou\", \"visual_dna\": {\"age\": \"6 years old\", \"body_type\": \"young boy, small, weak\", \"face_info\": \"pale skin, black eyes\", \"hair\": \"short black hair\", \"clothing\": \"tattered ancient chinese peasant clothes\"}}],\n"
+            "  \"characters\": [{\"canonical_name\": \"Xu Changshou\", \"visual_dna\": {\"age\": \"6 years old\", \"body_type\": \"young boy, small, weak\", \"face_info\": \"pale skin, black eyes\", \"hair\": \"short black hair\", \"clothing\": \"tattered ancient peasant clothes\"}}],\n"
+
             "  \"locations\": [{\"canonical_name\": \"Xiaoyan Village\", \"description\": \"A poor, famine-stricken mountain village.\"}],\n"
             "  \"world_concepts\": [{\"concept_type\": \"item\", \"name\": \"Amber Egg\", \"description\": \"A preserved century egg, translucent and golden.\"}]\n"
             "}"

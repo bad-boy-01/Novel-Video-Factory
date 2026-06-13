@@ -40,6 +40,77 @@ class LocalImageAdapter:
             logger.warning("Diffusers/Torch not installed properly. Running Image Adapter in MOCK mode.")
             self.pipeline = None
 
+    def _encode_prompt(self, prompt, negative_prompt):
+        """
+        Encodes the prompt into embeddings, supporting long prompts (> 77 tokens)
+        by chunking them and concatenating the embeddings.
+        """
+        import torch
+        
+        # SDXL has two text encoders
+        # text_encoder (CLIP-L) and text_encoder_2 (OpenCLIP-G)
+        device = self.pipeline.device
+        
+        def get_embeds(p, encoder, tokenizer):
+            input_ids = tokenizer(
+                p, padding="max_length", max_length=tokenizer.model_max_length, truncation=False, return_tensors="pt"
+            ).input_ids.to(device)
+            
+            # If prompt is longer than 77 tokens, we chunk it
+            if input_ids.shape[1] > tokenizer.model_max_length:
+                # Remove BOS/EOS and chunk
+                # tokenizer.model_max_length is usually 77
+                max_length = tokenizer.model_max_length
+                # Simple chunking logic:
+                chunks = []
+                for i in range(0, input_ids.shape[1], max_length - 2):
+                    chunk = input_ids[:, i:i + max_length - 2]
+                    # Add BOS and EOS
+                    bos = torch.tensor([[tokenizer.bos_token_id]], device=device)
+                    eos = torch.tensor([[tokenizer.eos_token_id]], device=device)
+                    chunk = torch.cat([bos, chunk, eos], dim=1)
+                    # Pad if needed
+                    if chunk.shape[1] < max_length:
+                        padding = torch.full((1, max_length - chunk.shape[1]), tokenizer.pad_token_id, device=device)
+                        chunk = torch.cat([chunk, padding], dim=1)
+                    chunks.append(chunk[:, :max_length])
+                
+                # Encode chunks
+                all_embeds = []
+                all_pooled = []
+                for chunk in chunks:
+                    output = encoder(chunk, output_hidden_states=True)
+                    all_embeds.append(output.hidden_states[-2]) # Penultimate layer
+                    if hasattr(output, 'text_embeds'):
+                        all_pooled.append(output.text_embeds)
+                
+                return torch.cat(all_embeds, dim=1), (torch.mean(torch.stack(all_pooled), dim=0) if all_pooled else None)
+            else:
+                # Normal short prompt
+                output = encoder(input_ids, output_hidden_states=True)
+                return output.hidden_states[-2], (output.text_embeds if hasattr(output, 'text_embeds') else None)
+
+        # Encode Positive Prompt
+        prompt_embeds, pooled_prompt_embeds = get_embeds(prompt, self.pipeline.text_encoder, self.pipeline.tokenizer)
+        prompt_embeds_2, pooled_prompt_embeds_2 = get_embeds(prompt, self.pipeline.text_encoder_2, self.pipeline.tokenizer_2)
+        
+        # SDXL concatenates the embeddings from the two encoders
+        prompt_embeds = torch.cat([prompt_embeds, prompt_embeds_2], dim=-1)
+        
+        # Encode Negative Prompt
+        neg_embeds, neg_pooled = get_embeds(negative_prompt, self.pipeline.text_encoder, self.pipeline.tokenizer)
+        neg_embeds_2, neg_pooled_2 = get_embeds(negative_prompt, self.pipeline.text_encoder_2, self.pipeline.tokenizer_2)
+        neg_embeds = torch.cat([neg_embeds, neg_embeds_2], dim=-1)
+        
+        # Ensure negative prompt length matches positive
+        if prompt_embeds.shape[1] > neg_embeds.shape[1]:
+            padding = torch.zeros((1, prompt_embeds.shape[1] - neg_embeds.shape[1], neg_embeds.shape[-1]), device=device, dtype=neg_embeds.dtype)
+            neg_embeds = torch.cat([neg_embeds, padding], dim=1)
+        elif neg_embeds.shape[1] > prompt_embeds.shape[1]:
+            neg_embeds = neg_embeds[:, :prompt_embeds.shape[1], :]
+
+        return prompt_embeds, pooled_prompt_embeds_2, neg_embeds, neg_pooled_2
+
     def generate_image(self, prompt: str, output_path: str, negative_prompt: str = "", reference_image_paths: list = None):
         """
         Generates an image from a prompt and saves it.
@@ -48,13 +119,18 @@ class LocalImageAdapter:
             # Real generation
             logger.info(f"Generating image (Real)...")
             
+            # Layer 8.3: Long Prompt Support
+            prompt_embeds, pooled_prompt_embeds, neg_embeds, neg_pooled = self._encode_prompt(prompt, negative_prompt)
+            
             kwargs = {
-                "prompt": prompt,
-                "negative_prompt": negative_prompt,
+                "prompt_embeds": prompt_embeds,
+                "pooled_prompt_embeds": pooled_prompt_embeds,
+                "negative_prompt_embeds": neg_embeds,
+                "negative_pooled_prompt_embeds": neg_pooled,
                 "width": 1280,
                 "height": 720,
-                "num_inference_steps": 20,
-                "guidance_scale": 7.0
+                "num_inference_steps": 30, # Increased for higher quality with 4.0
+                "guidance_scale": 5.0      # Animagine 4.0 recommends 4-7
             }
             
             # Inject IP Adapter if reference images are provided

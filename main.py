@@ -188,7 +188,7 @@ def main():
                     # Truncate DNA string if it's too long
                     dna_short = dna_str[:120] if len(dna_str) > 120 else dna_str
                     
-                    prompt = f"{manhwa_core}, {gender_tag}, solo, {dna_short}, traditional chinese clothing, cinematic portrait, {quality_tags}, rating_safe"
+                    prompt = f"{manhwa_core}, {gender_tag}, solo, {dna_short}, traditional eastern clothing, cinematic portrait, {quality_tags}, rating_safe"
                     negative = config_manager.get('prompts.negative_prompt', 'lowres, bad anatomy, bad hands, text, error, worst quality, low quality, signature, watermark, blurry')
                     image_adapter.generate_image(prompt, img_path, negative_prompt=negative)
                 else:
