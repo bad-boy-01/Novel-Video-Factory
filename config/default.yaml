@@ -13,7 +13,7 @@ models:
   translation:
     primary:
       provider: "local" # options: local, groq, openai, gemini
-      model: "qwen2.5:7b" # for gemini use 'gemini-1.5-flash' or 'gemini-1.5-pro'
+      model: "qwen2.5:7b" # for gemini use 'gemini-flash-latest' or 'gemini-2.5-flash'
     backup:
       provider: "ollama"
       model: "gemma2"
